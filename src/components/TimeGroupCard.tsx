@@ -1,0 +1,207 @@
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Dose } from '../types/GempillTypes';
+import { PillEntry } from './PillEntry';
+import { colors } from '../theme/colors';
+import { shadows } from '../theme/shadows';
+import { Modal, Portal, Text as PaperText, Button, Switch, useTheme } from 'react-native-paper';
+import { TimePicker } from 'react-native-paper-dates';
+import { useMedication } from '../context/MedicationContext';
+import * as ExpoLocalization from 'expo-localization';
+import { QuickRescheduleActions } from './QuickRescheduleActions';
+import { SuccessAnimation } from './SuccessAnimation';
+
+interface TimeGroupCardProps {
+    timeGroupName: string;
+    doses: Dose[];
+    time: string;
+    onTake: (doseId: string) => void;
+    onSkip: (doseId: string) => void;
+    onPending: (doseId: string) => void;
+}
+
+export const TimeGroupCard: React.FC<TimeGroupCardProps> = ({
+    timeGroupName,
+    doses,
+    time,
+    onTake,
+    onSkip,
+    onPending,
+}) => {
+    const { rescheduleDoseGroup } = useMedication();
+    const theme = useTheme();
+    const calendars = ExpoLocalization.getCalendars();
+    const is24Hour = calendars && calendars.length > 0 ? (calendars[0].uses24hourClock ?? false) : false;
+    const [visible, setVisible] = React.useState(false);
+    const [isPersistent, setIsPersistent] = React.useState(false);
+    const [showSuccess, setShowSuccess] = React.useState(false);
+
+    // Time Picker State
+    const [hours, setHours] = React.useState(0);
+    const [minutes, setMinutes] = React.useState(0);
+    const [initialHours, setInitialHours] = React.useState(0);
+    const [initialMinutes, setInitialMinutes] = React.useState(0);
+    const [focused, setFocused] = React.useState<'hours' | 'minutes'>('hours');
+
+    // Check if any dose in this group has been rescheduled (has originalScheduledTime)
+    // We assume if one is rescheduled, the whole group for this time slot is.
+    const originalTime = doses[0]?.originalScheduledTime;
+
+    const handleApplyOffset = (offsetMinutes: number) => {
+        let newMinutes = initialMinutes + offsetMinutes;
+        let newHours = initialHours;
+
+        while (newMinutes >= 60) {
+            newMinutes -= 60;
+            newHours = (newHours + 1) % 24;
+        }
+
+        setMinutes(newMinutes);
+        setHours(newHours);
+    };
+
+    const onOpen = () => {
+        const [h, m] = time.split(':').map(Number);
+        setHours(h);
+        setMinutes(m);
+        setInitialHours(h);
+        setInitialMinutes(m);
+        setFocused('hours');
+        setShowSuccess(false);
+        setVisible(true);
+    };
+
+    const onDismiss = () => setVisible(false);
+
+    const onConfirm = () => {
+        setShowSuccess(true);
+        const newTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
+        // Wait for animation (1.5s) + settle time (0.75s) = 2.25s
+        setTimeout(() => {
+            // Check if still mounted/visible before acting
+            rescheduleDoseGroup(time, newTime, isPersistent);
+            setVisible(false);
+        }, 2250);
+    };
+
+    return (
+        <View style={styles.cardContainer}>
+            <TouchableOpacity onPress={onOpen} style={styles.headerRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={styles.groupName}>{time}</Text>
+                    {originalTime && (
+                        <Text style={[styles.originalTime, { textDecorationLine: 'line-through' }]}>
+                            {originalTime}
+                        </Text>
+                    )}
+                </View>
+                <PaperText variant="labelMedium" style={{ color: theme.colors.primary }}>Reschedule</PaperText>
+            </TouchableOpacity>
+
+            <Portal>
+                <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.surface }]}>
+                    {showSuccess ? (
+                        <SuccessAnimation />
+                    ) : (
+                        <>
+                            <PaperText variant="headlineSmall" style={{ marginBottom: 16, textAlign: 'center' }}>Reschedule Intake</PaperText>
+
+                            <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                                <TimePicker
+                                    hours={hours}
+                                    minutes={minutes}
+                                    onFocusInput={(type) => setFocused(type)}
+                                    focused={focused}
+                                    inputType="picker"
+                                    use24HourClock={is24Hour}
+                                    onChange={({ hours, minutes }) => {
+                                        setHours(hours);
+                                        setMinutes(minutes);
+                                    }}
+                                />
+                            </View>
+
+                            <QuickRescheduleActions onAddMinutes={handleApplyOffset} />
+
+                            <View style={styles.switchRow}>
+                                <PaperText variant="bodyLarge">Apply to future days?</PaperText>
+                                <Switch value={isPersistent} onValueChange={setIsPersistent} />
+                            </View>
+
+                            <View style={styles.buttonRow}>
+                                <Button onPress={onDismiss} style={{ marginRight: 8 }}>Cancel</Button>
+                                <Button mode="contained" onPress={onConfirm}>Done</Button>
+                            </View>
+                        </>
+                    )}
+                </Modal>
+            </Portal>
+            <View>
+                {doses.map((dose, index) => (
+                    <View key={dose.id}>
+                        <PillEntry
+                            dose={dose}
+                            onTake={onTake}
+                            onSkip={onSkip}
+                            onPending={onPending}
+                        />
+                        {index < doses.length - 1 && <View style={styles.divider} />}
+                    </View>
+                ))}
+            </View>
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    cardContainer: {
+        marginBottom: 16,
+        backgroundColor: colors.surface,
+        borderRadius: 24,
+        paddingVertical: 16,
+        ...shadows.small,
+    },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+        paddingHorizontal: 20,
+    },
+    groupName: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: colors.text,
+    },
+    timeText: {
+        fontSize: 16,
+        color: colors.textSecondary,
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#F0F0F0',
+        marginHorizontal: 16,
+    },
+    originalTime: {
+        fontSize: 16,
+        color: colors.textSecondary,
+        marginLeft: 8,
+        opacity: 0.6,
+    },
+    modalContainer: {
+        padding: 24,
+        margin: 20,
+        borderRadius: 28,
+    },
+    switchRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    buttonRow: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+    },
+});
