@@ -8,13 +8,40 @@ import { Appbar, Card, Text, useTheme, Chip, Divider } from 'react-native-paper'
 import { Svg, Circle } from 'react-native-svg';
 import { useMedicationHistory } from '../hooks/useMedicationHistory';
 import { MedicationIcon } from '../components/MedicationIcon';
+import { Button, Dialog, Portal, RadioButton, TextInput as PaperInput } from 'react-native-paper';
+import { useMedication } from '../context/MedicationContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MedDetail'>;
 
 export const MedDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     const { medId } = route.params;
     const { medication, history, adherencePercentage, takenCount, expectedCount } = useMedicationHistory(medId);
+    const { stopMedication, pauseMedication, resumeMedication } = useMedication();
     const theme = useTheme();
+
+    const [freezeDialogVisible, setFreezeDialogVisible] = React.useState(false);
+    const [freezeType, setFreezeType] = React.useState<'indefinite' | 'days'>('indefinite');
+    const [freezeDays, setFreezeDays] = React.useState('7');
+
+    const handleStop = () => {
+        stopMedication(medId);
+    };
+
+    const handleFreeze = () => {
+        if (freezeType === 'indefinite') {
+            pauseMedication(medId);
+        } else {
+            const days = parseInt(freezeDays);
+            if (!isNaN(days) && days > 0) {
+                pauseMedication(medId, days);
+            }
+        }
+        setFreezeDialogVisible(false);
+    };
+
+    const handleResume = () => {
+        resumeMedication(medId);
+    };
 
     if (!medication) {
         return (
@@ -64,6 +91,88 @@ export const MedDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                             </View>
                         </Card.Content>
                     </Card>
+
+                    {/* Manage Intake Card */}
+                    <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
+                        <Card.Content>
+                            <Text variant="titleMedium" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>
+                                Manage Intake
+                            </Text>
+                            <Divider style={{ marginBottom: 16 }} />
+
+                            {medication.status === 'Active' ? (
+                                <View style={styles.actionRow}>
+                                    <Button
+                                        mode="outlined"
+                                        icon="snowflake"
+                                        onPress={() => setFreezeDialogVisible(true)}
+                                        style={{ flex: 1, marginRight: 8 }}
+                                    >
+                                        Freeze
+                                    </Button>
+                                    <Button
+                                        mode="contained"
+                                        buttonColor={theme.colors.error}
+                                        icon="stop"
+                                        onPress={handleStop}
+                                        style={{ flex: 1, marginLeft: 8 }}
+                                    >
+                                        Stop
+                                    </Button>
+                                </View>
+                            ) : (
+                                <View>
+                                    <Text variant="bodyMedium" style={{ marginBottom: 16, color: theme.colors.primary, textAlign: 'center' }}>
+                                        Status: {medication.status.toUpperCase()}
+                                        {medication.pausedUntil && ` until ${medication.pausedUntil.toLocaleDateString()}`}
+                                    </Text>
+                                    <Button
+                                        mode="contained"
+                                        icon="play"
+                                        onPress={handleResume}
+                                    >
+                                        Resume Intake
+                                    </Button>
+                                </View>
+                            )}
+                        </Card.Content>
+                    </Card>
+
+                    <Portal>
+                        <Dialog visible={freezeDialogVisible} onDismiss={() => setFreezeDialogVisible(false)} style={{ backgroundColor: theme.colors.surface }}>
+                            <Dialog.Title>Freeze Intake</Dialog.Title>
+                            <Dialog.Content>
+                                <Text variant="bodyMedium" style={{ marginBottom: 16 }}>
+                                    Freezing stops reminders and tracking temporarily.
+                                </Text>
+                                <RadioButton.Group onValueChange={val => setFreezeType(val as 'indefinite' | 'days')} value={freezeType}>
+                                    <View style={styles.radioRow}>
+                                        <RadioButton value="indefinite" />
+                                        <Text>Indefinite (Until resumed)</Text>
+                                    </View>
+                                    <View style={styles.radioRow}>
+                                        <RadioButton value="days" />
+                                        <Text>For specific days</Text>
+                                    </View>
+                                </RadioButton.Group>
+
+                                {freezeType === 'days' && (
+                                    <PaperInput
+                                        mode="outlined"
+                                        label="Number of Days"
+                                        value={freezeDays}
+                                        onChangeText={setFreezeDays}
+                                        keyboardType="numeric"
+                                        style={{ marginTop: 8 }}
+                                    />
+                                )}
+                            </Dialog.Content>
+                            <Dialog.Actions>
+                                <Button onPress={() => setFreezeDialogVisible(false)}>Cancel</Button>
+                                <Button onPress={handleFreeze}>Freeze</Button>
+                            </Dialog.Actions>
+                        </Dialog>
+                    </Portal>
 
                     {/* Adherence Card */}
                     <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
@@ -215,5 +324,14 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingVertical: 12,
+    },
+    actionRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    radioRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 4,
     },
 });

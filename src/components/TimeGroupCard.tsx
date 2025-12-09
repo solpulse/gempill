@@ -10,6 +10,9 @@ import { useMedication } from '../context/MedicationContext';
 import * as ExpoLocalization from 'expo-localization';
 import { QuickRescheduleActions } from './QuickRescheduleActions';
 import { SuccessAnimation } from './SuccessAnimation';
+import Animated, { FadeIn } from 'react-native-reanimated';
+import { AnimatedSizeWrapper } from './AnimatedSizeWrapper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface TimeGroupCardProps {
     timeGroupName: string;
@@ -47,6 +50,9 @@ export const TimeGroupCard: React.FC<TimeGroupCardProps> = ({
     // We assume if one is rescheduled, the whole group for this time slot is.
     const originalTime = doses[0]?.originalScheduledTime;
 
+    // Check if all doses are taken
+    const allTaken = doses.every(d => d.status === 'Taken');
+
     const handleApplyOffset = (offsetMinutes: number) => {
         let newMinutes = initialMinutes + offsetMinutes;
         let newHours = initialHours;
@@ -79,65 +85,71 @@ export const TimeGroupCard: React.FC<TimeGroupCardProps> = ({
 
         // Wait for animation (1.5s) + settle time (0.75s) = 2.25s
         setTimeout(() => {
-            // Check if still mounted/visible before acting
             rescheduleDoseGroup(time, newTime, isPersistent);
             setVisible(false);
         }, 2250);
     };
 
     return (
-        <View style={styles.cardContainer}>
-            <TouchableOpacity onPress={onOpen} style={styles.headerRow}>
+        <View style={styles.container}>
+            <TouchableOpacity onPress={onOpen} style={styles.headerRow} disabled={allTaken}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Text style={styles.groupName}>{time}</Text>
-                    {originalTime && (
+                    {originalTime && originalTime !== time && (
                         <Text style={[styles.originalTime, { textDecorationLine: 'line-through' }]}>
                             {originalTime}
                         </Text>
                     )}
                 </View>
-                <PaperText variant="labelMedium" style={{ color: theme.colors.primary }}>Reschedule</PaperText>
+                {!allTaken && (
+                    <MaterialCommunityIcons name="clock-edit-outline" size={24} color={theme.colors.primary} />
+                )}
             </TouchableOpacity>
 
             <Portal>
                 <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.surface }]}>
-                    {showSuccess ? (
-                        <SuccessAnimation />
-                    ) : (
-                        <>
-                            <PaperText variant="headlineSmall" style={{ marginBottom: 16, textAlign: 'center' }}>Reschedule Intake</PaperText>
+                    <AnimatedSizeWrapper>
+                        {showSuccess ? (
+                            <Animated.View entering={FadeIn.duration(100)} key="success">
+                                <SuccessAnimation />
+                            </Animated.View>
+                        ) : (
+                            <View key="form">
+                                <PaperText variant="headlineSmall" style={{ marginBottom: 16, textAlign: 'center' }}>Reschedule Intake</PaperText>
 
-                            <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                                <TimePicker
-                                    hours={hours}
-                                    minutes={minutes}
-                                    onFocusInput={(type) => setFocused(type)}
-                                    focused={focused}
-                                    inputType="picker"
-                                    use24HourClock={is24Hour}
-                                    onChange={({ hours, minutes }) => {
-                                        setHours(hours);
-                                        setMinutes(minutes);
-                                    }}
-                                />
+                                <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                                    <TimePicker
+                                        hours={hours}
+                                        minutes={minutes}
+                                        onFocusInput={(type) => setFocused(type)}
+                                        focused={focused}
+                                        inputType="picker"
+                                        use24HourClock={is24Hour}
+                                        onChange={({ hours, minutes }) => {
+                                            setHours(hours);
+                                            setMinutes(minutes);
+                                        }}
+                                    />
+                                </View>
+
+                                <QuickRescheduleActions onAddMinutes={handleApplyOffset} />
+
+                                <View style={styles.switchRow}>
+                                    <PaperText variant="bodyLarge">Apply to future days?</PaperText>
+                                    <Switch value={isPersistent} onValueChange={setIsPersistent} />
+                                </View>
+
+                                <View style={styles.buttonRow}>
+                                    <Button onPress={onDismiss} style={{ marginRight: 8 }}>Cancel</Button>
+                                    <Button mode="contained" onPress={onConfirm}>Done</Button>
+                                </View>
                             </View>
-
-                            <QuickRescheduleActions onAddMinutes={handleApplyOffset} />
-
-                            <View style={styles.switchRow}>
-                                <PaperText variant="bodyLarge">Apply to future days?</PaperText>
-                                <Switch value={isPersistent} onValueChange={setIsPersistent} />
-                            </View>
-
-                            <View style={styles.buttonRow}>
-                                <Button onPress={onDismiss} style={{ marginRight: 8 }}>Cancel</Button>
-                                <Button mode="contained" onPress={onConfirm}>Done</Button>
-                            </View>
-                        </>
-                    )}
+                        )}
+                    </AnimatedSizeWrapper>
                 </Modal>
             </Portal>
-            <View>
+
+            <View style={styles.cardContainer}>
                 {doses.map((dose, index) => (
                     <View key={dose.id}>
                         <PillEntry
@@ -155,8 +167,10 @@ export const TimeGroupCard: React.FC<TimeGroupCardProps> = ({
 };
 
 const styles = StyleSheet.create({
-    cardContainer: {
+    container: {
         marginBottom: 16,
+    },
+    cardContainer: {
         backgroundColor: colors.surface,
         borderRadius: 24,
         paddingVertical: 16,
@@ -166,8 +180,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8,
-        paddingHorizontal: 20,
+        marginBottom: 12,
+        paddingHorizontal: 8,
     },
     groupName: {
         fontSize: 20,

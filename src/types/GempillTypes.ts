@@ -1,3 +1,5 @@
+export type MedicationStatus = 'Active' | 'Paused' | 'Stopped';
+
 export interface Medication {
     id: string;
     name: string;
@@ -9,12 +11,15 @@ export interface Medication {
     scheduledTimes: string[]; // ["08:00", "13:00"]
     color?: string;
     icon?: string;
+    status: MedicationStatus;
+    pausedUntil?: Date | null; // If null/undefined and status is Paused, it's indefinite
 }
 
-export interface Dose extends Medication {
+export interface Dose extends Omit<Medication, 'status'> {
     status: 'Pending' | 'Taken' | 'Skipped';
     scheduledTime: string;
     originalScheduledTime?: string;
+    medicationId: string;
 }
 
 export interface LogEntry {
