@@ -1,37 +1,48 @@
 import { useState, useCallback } from 'react';
+import { Alert } from 'react-native';
 import { useMedication } from '../context/MedicationContext';
-import * as ExpoLocalization from 'expo-localization';
-import { colors } from '../theme/colors';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/GempillTypes';
+import { formatTimeForDisplay, isSystem24Hour, parseTimeToMinutes } from '../utils/TimeUtils';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddMedication'>;
 type RoutePropType = RouteProp<RootStackParamList, 'AddMedication'>;
 
 export const useMedicationForm = (navigation: NavigationProp, route: RoutePropType) => {
     const { addMedication, updateMedication } = useMedication();
-    const calendars = ExpoLocalization.getCalendars();
-    // Safely handle potentially null/undefined calendar or uses24hourClock
-    const is24Hour = calendars && calendars.length > 0 ? (calendars[0].uses24hourClock ?? false) : false;
+    const is24Hour = isSystem24Hour();
 
-    const existingMed = route.params?.medication;
+    const existingMedParam = route.params?.medication;
+
+    // Deserialize if necessary (dates might be strings)
+    const existingMed = existingMedParam ? {
+        ...existingMedParam,
+        startDate: typeof existingMedParam.startDate === 'string' ? new Date(existingMedParam.startDate) : existingMedParam.startDate,
+        pausedUntil: typeof existingMedParam.pausedUntil === 'string' && existingMedParam.pausedUntil ? new Date(existingMedParam.pausedUntil) : existingMedParam.pausedUntil
+    } : undefined;
+
     const isEditing = !!existingMed;
 
     const [name, setName] = useState(existingMed?.name || '');
     const [dosage, setDosage] = useState(existingMed?.dosage?.toString() || '');
     const [dosageUnit, setDosageUnit] = useState(existingMed?.dosageUnit || 'mg');
     const [frequency, setFrequency] = useState(existingMed?.frequency || 'Daily');
+
+    // Initialize times from existing med (converting potentially stored string to Date object for picker)
     const [times, setTimes] = useState<{ id: string; time: Date }[]>(
         existingMed?.scheduledTimes.map(t => {
-            const [hours, minutes] = t.split(':').map(Number);
+            // Check if t is 12h or 24h, parseTimeToMinutes handles both
+            const totalMinutes = parseTimeToMinutes(t);
             const date = new Date();
-            date.setHours(hours);
-            date.setMinutes(minutes);
+            if (!isNaN(totalMinutes)) {
+                date.setHours(Math.floor(totalMinutes / 60));
+                date.setMinutes(totalMinutes % 60);
+            }
             return { id: Math.random().toString(), time: date };
         }) || [{ id: Math.random().toString(), time: new Date() }]
     );
-    const [color, setColor] = useState(existingMed?.color || colors.labelGrey);
+    const [color, setColor] = useState(existingMed?.color || '#B0BEC5');
     const [icon, setIcon] = useState(existingMed?.icon || 'pill');
 
     // UI State
@@ -72,15 +83,35 @@ export const useMedicationForm = (navigation: NavigationProp, route: RoutePropTy
         setTimes(newTimes);
     };
 
-    const formatTime = (date: Date) => {
-        return date.toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: !is24Hour
-        });
+    // Helper to format 24h string for storage: "HH:mm"
+    const toStorageFormat = (date: Date): string => {
+        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
     };
 
-    const handleSave = () => {
+    // For display in the form UI (respects system locale)
+    const formatTime = (date: Date) => {
+        const timeStr = toStorageFormat(date);
+        return formatTimeForDisplay(timeStr);
+    };
+
+    const [errors, setErrors] = useState({ name: false, dosage: false, times: false });
+
+    // ... existing code ...
+
+    const handleSave = (): boolean => {
+        // Validation
+        const newErrors = {
+            name: !name.trim(),
+            dosage: !dosage.trim(),
+            times: times.length === 0
+        };
+
+        setErrors(newErrors);
+
+        if (newErrors.name || newErrors.dosage || newErrors.times) {
+            return false;
+        }
+
         const medicationData = {
             name,
             dosage: parseFloat(dosage),
@@ -88,9 +119,10 @@ export const useMedicationForm = (navigation: NavigationProp, route: RoutePropTy
             startDate: new Date(),
             frequency,
             timesPerDay: times.length,
-            scheduledTimes: times.map(t => formatTime(t.time)),
+            scheduledTimes: times.map(t => toStorageFormat(t.time)), // Store as 24h strict
             color,
             icon,
+            status: existingMed?.status || 'Active', // Preserve status or default to Active
         };
 
         if (isEditing && existingMed) {
@@ -100,6 +132,7 @@ export const useMedicationForm = (navigation: NavigationProp, route: RoutePropTy
         }
 
         navigation.goBack();
+        return true;
     };
 
     return {
@@ -116,8 +149,10 @@ export const useMedicationForm = (navigation: NavigationProp, route: RoutePropTy
         showUnitMenu,
         showTimePicker,
         activeTimeIndex,
+        errors,
 
         // Setters / Handlers
+        // ...
         setName,
         setDosage,
         setDosageUnit,

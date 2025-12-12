@@ -10,7 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Dose } from '../types/GempillTypes';
-import { colors } from '../theme/colors';
+import { useTheme } from 'react-native-paper';
 import { MedicationIcon } from './MedicationIcon';
 
 interface PillEntryProps {
@@ -21,6 +21,9 @@ interface PillEntryProps {
 }
 
 export const PillEntry: React.FC<PillEntryProps> = ({ dose, onTake, onSkip, onPending }) => {
+    const theme = useTheme();
+    const colors = theme.colors; // ease of migration
+
     // Animation Values
     // 0: Pending (Both visible)
     // 1: Taken (Check expanded, Cross hidden)
@@ -172,17 +175,17 @@ export const PillEntry: React.FC<PillEntryProps> = ({ dose, onTake, onSkip, onPe
     if ((dose.status as string) === 'Missed') {
         return (
             <View style={styles.container}>
-                <View style={[styles.iconContainer, { backgroundColor: dose.color || colors.primaryLight }]}>
-                    <MedicationIcon name={dose.icon || "pill"} size={24} color={colors.text} />
+                <View style={[styles.iconContainer, { backgroundColor: dose.color || theme.colors.primaryContainer }]}>
+                    <MedicationIcon name={dose.icon || "pill"} size={24} color={theme.colors.onSurface} />
                 </View>
                 <View style={styles.detailsContainer}>
-                    <Text style={styles.medName}>{dose.name}</Text>
-                    <Text style={styles.dosageText}>{dose.dosage} {dose.dosageUnit}, {dose.frequency}</Text>
+                    <Text style={[styles.medName, { color: theme.colors.onSurface }]}>{dose.name}</Text>
+                    <Text style={[styles.dosageText, { color: theme.colors.onSurfaceVariant }]}>{dose.dosage} {dose.dosageUnit}, {dose.frequency}</Text>
                 </View>
                 <View style={styles.actionContainer}>
-                    <View style={styles.missedBadge}>
-                        <Ionicons name="alert-circle" size={20} color={colors.error} />
-                        <Text style={styles.missedBadgeText}>Missed</Text>
+                    <View style={[styles.missedBadge, { backgroundColor: theme.colors.errorContainer }]}>
+                        <Ionicons name="alert-circle" size={20} color={theme.colors.error} />
+                        <Text style={[styles.missedBadgeText, { color: theme.colors.error }]}>Missed</Text>
                     </View>
                 </View>
             </View>
@@ -192,14 +195,14 @@ export const PillEntry: React.FC<PillEntryProps> = ({ dose, onTake, onSkip, onPe
     return (
         <View style={styles.container}>
             {/* Pill Icon Container */}
-            <View style={[styles.iconContainer, { backgroundColor: dose.color || colors.primaryLight }]}>
-                <MedicationIcon name={dose.icon || "pill"} size={24} color={colors.text} />
+            <View style={[styles.iconContainer, { backgroundColor: dose.color || theme.colors.primaryContainer }]}>
+                <MedicationIcon name={dose.icon || "pill"} size={24} color={theme.colors.onSurface} />
             </View>
 
             {/* Details Container */}
             <View style={styles.detailsContainer}>
-                <Text style={styles.medName}>{dose.name}</Text>
-                <Text style={styles.dosageText}>
+                <Text style={[styles.medName, { color: theme.colors.onSurface }]}>{dose.name}</Text>
+                <Text style={[styles.dosageText, { color: theme.colors.onSurfaceVariant }]}>
                     {dose.dosage} {dose.dosageUnit}, {dose.frequency}
                 </Text>
             </View>
@@ -213,18 +216,18 @@ export const PillEntry: React.FC<PillEntryProps> = ({ dose, onTake, onSkip, onPe
                         takeButtonStyle
                     ]}>
                         <TouchableOpacity
-                            style={[styles.actionButton, { backgroundColor: colors.successLight }]}
+                            style={[styles.actionButton, { backgroundColor: theme.colors.tertiaryContainer || '#B9F6CA' }]}
                             onPress={handleTake}
                             activeOpacity={0.8}
                         >
                             <View style={styles.buttonContent}>
                                 <Animated.View style={takeIconStyle}>
-                                    <Ionicons name="checkmark" size={28} color={colors.success} style={{ fontWeight: '900' }} />
+                                    <Ionicons name="checkmark" size={28} color={theme.colors.tertiary || '#00C853'} style={{ fontWeight: '900' }} />
                                 </Animated.View>
                                 <Animated.Text
                                     style={[
                                         styles.buttonText,
-                                        { color: colors.success },
+                                        { color: theme.colors.tertiary || '#00C853' },
                                         takeTextStyle
                                     ]}
                                     numberOfLines={1}
@@ -241,18 +244,18 @@ export const PillEntry: React.FC<PillEntryProps> = ({ dose, onTake, onSkip, onPe
                         skipButtonStyle
                     ]}>
                         <TouchableOpacity
-                            style={[styles.actionButton, { backgroundColor: colors.errorLight }]}
+                            style={[styles.actionButton, { backgroundColor: theme.colors.errorContainer }]}
                             onPress={handleSkip}
                             activeOpacity={0.8}
                         >
                             <View style={styles.buttonContent}>
                                 <Animated.View style={skipIconStyle}>
-                                    <Ionicons name="close" size={28} color={colors.error} style={{ fontWeight: '900' }} />
+                                    <Ionicons name="close" size={28} color={theme.colors.error} style={{ fontWeight: '900' }} />
                                 </Animated.View>
                                 <Animated.Text
                                     style={[
                                         styles.buttonText,
-                                        { color: colors.error },
+                                        { color: theme.colors.error },
                                         skipTextStyle
                                     ]}
                                     numberOfLines={1}
@@ -279,7 +282,6 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: colors.primaryLight,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
@@ -291,12 +293,10 @@ const styles = StyleSheet.create({
     medName: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: colors.text,
         marginBottom: 4,
     },
     dosageText: {
         fontSize: 14,
-        color: colors.textSecondary,
     },
     actionContainer: {
         width: 110, // Fixed width to contain the buttons/expanded button
@@ -334,7 +334,6 @@ const styles = StyleSheet.create({
     missedBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: colors.errorLight,
         paddingVertical: 8,
         paddingHorizontal: 16,
         borderRadius: 20,
@@ -342,7 +341,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     missedBadgeText: {
-        color: colors.error,
         fontWeight: 'bold',
         fontSize: 14,
         marginLeft: 4,

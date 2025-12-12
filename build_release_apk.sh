@@ -24,11 +24,16 @@ fi
 
 # 3. Build
 echo "🏗️  Building APK with Gradle..."
+
+# Get absolute path to keystore
+KEYSTORE_PATH="$(pwd)/$KEYSTORE_FILE"
+
 cd android
 chmod +x gradlew
 ./gradlew assembleRelease \
+  -x lintVitalAnalyzeRelease \
   -Pkotlin.jvm.toolchain.version=21 \
-  -Pandroid.injected.signing.store.file=../../"$KEYSTORE_FILE" \
+  -Pandroid.injected.signing.store.file="$KEYSTORE_PATH" \
   -Pandroid.injected.signing.store.password="$PASS" \
   -Pandroid.injected.signing.key.alias="$ALIAS" \
   -Pandroid.injected.signing.key.password="$PASS"

@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Medication, Dose, MedicationStatus } from '../types/GempillTypes';
 import NotificationService from '../services/NotificationService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -18,60 +19,7 @@ interface MedicationContextType {
 
 const MedicationContext = createContext<MedicationContextType | undefined>(undefined);
 
-const INITIAL_MEDICATIONS: Medication[] = [
-    {
-        id: '1',
-        name: 'Lisinopril',
-        dosage: 10,
-        dosageUnit: 'mg',
-        startDate: new Date(),
-        frequency: '1 capsule',
-        timesPerDay: 1,
-        scheduledTimes: ['08:00'],
-        color: '#CE93D8',
-        icon: 'medkit',
-        status: 'Active',
-    },
-    {
-        id: '2',
-        name: 'Metformin',
-        dosage: 500,
-        dosageUnit: 'mg',
-        startDate: new Date(),
-        frequency: '1 tablet',
-        timesPerDay: 1,
-        scheduledTimes: ['08:00'],
-        color: '#60D1A9',
-        icon: 'tablet-landscape',
-        status: 'Active',
-    },
-    {
-        id: '3',
-        name: 'Vitamin D',
-        dosage: 2000,
-        dosageUnit: 'IU',
-        startDate: new Date(),
-        frequency: '1 softgel',
-        timesPerDay: 1,
-        scheduledTimes: ['13:00'],
-        color: '#FFF59D',
-        icon: 'nutrition',
-        status: 'Active',
-    },
-    {
-        id: '4',
-        name: 'Atorvastatin',
-        dosage: 20,
-        dosageUnit: 'mg',
-        startDate: new Date(),
-        frequency: '1 tablet',
-        timesPerDay: 1,
-        scheduledTimes: ['21:00'],
-        color: '#90CAF9',
-        icon: 'flask',
-        status: 'Active',
-    },
-];
+const INITIAL_MEDICATIONS: Medication[] = [];
 
 // Helper to generate doses for today from medications
 const generateDosesForToday = (meds: Medication[]): Dose[] => {
@@ -109,23 +57,71 @@ const generateDosesForToday = (meds: Medication[]): Dose[] => {
 export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [medications, setMedications] = useState<Medication[]>(INITIAL_MEDICATIONS);
     const [doses, setDoses] = useState<Dose[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Initialize doses on mount (or when medications change, but be careful about overwriting statuses)
-    // For simplicity, we'll just initialize if empty, or we could have a more complex logic.
-    // For this task, let's just generate them initially.
+    const STORAGE_KEY_MEDS = '@medications';
+    const STORAGE_KEY_DOSES = '@doses';
+
+    // 1. Load Data on Mount
     useEffect(() => {
-        if (doses.length === 0) {
-            const initialDoses = generateDosesForToday(medications);
-            setDoses(initialDoses);
+        const loadData = async () => {
+            try {
+                const [medsJson, dosesJson] = await Promise.all([
+                    AsyncStorage.getItem(STORAGE_KEY_MEDS),
+                    AsyncStorage.getItem(STORAGE_KEY_DOSES)
+                ]);
 
-            // Schedule alarms for all pending doses
-            initialDoses.forEach(dose => {
-                if (dose.status === 'Pending') {
-                    scheduleDoseAlarm(dose);
+                if (medsJson) {
+                    setMedications(JSON.parse(medsJson));
                 }
-            });
-        }
+
+                if (dosesJson) {
+                    const loadedDoses: Dose[] = JSON.parse(dosesJson);
+                    // Check if doses are from today
+                    const todayStr = new Date().toDateString();
+                    const isToday = loadedDoses.length > 0 && loadedDoses[0].id.endsWith(todayStr);
+
+                    if (isToday) {
+                        setDoses(loadedDoses);
+                    } else {
+                        // Doses are old or empty, regenerate for today if we have meds
+                        if (medsJson) {
+                            const meds = JSON.parse(medsJson);
+                            const newDoses = generateDosesForToday(meds);
+                            setDoses(newDoses);
+                        }
+                    }
+                } else if (medsJson) {
+                    // No doses saved, but we have meds (first run after update?)
+                    const meds = JSON.parse(medsJson);
+                    const newDoses = generateDosesForToday(meds);
+                    setDoses(newDoses);
+                }
+            } catch (e) {
+                console.error('Failed to load medication data', e);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadData();
     }, []);
+
+    // 2. Save Data on Change
+    useEffect(() => {
+        if (isLoading) return; // Don't save empty state while loading
+
+        const saveData = async () => {
+            try {
+                await AsyncStorage.setItem(STORAGE_KEY_MEDS, JSON.stringify(medications));
+                await AsyncStorage.setItem(STORAGE_KEY_DOSES, JSON.stringify(doses));
+            } catch (e) {
+                console.error('Failed to save medication data', e);
+            }
+        };
+
+        saveData();
+    }, [medications, doses, isLoading]);
 
     const getTimestampForTime = (timeStr: string): number => {
         const [hours, minutes] = timeStr.split(':').map(Number);
@@ -137,6 +133,12 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
     const scheduleDoseAlarm = (dose: Dose, specificTime?: string) => {
         const timeToSchedule = specificTime || dose.scheduledTime;
         const timestamp = getTimestampForTime(timeToSchedule);
+
+        console.log(`[MedicationContext] Scheduling alarm for ${dose.name} at ${timeToSchedule} (timestamp: ${timestamp}) Current Time: ${Date.now()}`);
+
+        if (timestamp < Date.now()) {
+            console.log('[MedicationContext] Warning: Time is in the past. Notifee might trigger immediately or ignore.');
+        }
 
         // Only schedule if it's in the future or very recent? 
         // For now, schedule everything. Notifee handles past triggers by firing immediately if configured, 

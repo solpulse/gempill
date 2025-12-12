@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Menu } from 'react-native-paper';
-import { colors } from '../../theme/colors';
+import { Menu, useTheme } from 'react-native-paper';
 
 interface DosageInputProps {
     dosage: string;
@@ -12,6 +11,7 @@ interface DosageInputProps {
     showUnitMenu: boolean;
     setShowUnitMenu: (visible: boolean) => void;
     unitOptions: string[];
+    error?: boolean;
 }
 
 export const DosageInput: React.FC<DosageInputProps> = ({
@@ -21,36 +21,47 @@ export const DosageInput: React.FC<DosageInputProps> = ({
     setDosageUnit,
     showUnitMenu,
     setShowUnitMenu,
-    unitOptions
+    unitOptions,
+    error
 }) => {
+    const theme = useTheme();
+
     return (
         <View style={styles.row}>
             <View style={[styles.inputGroup, { flex: 1, marginRight: 16 }]}>
-                <Text style={styles.label}>Dosage Amount</Text>
+                <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Dosage Amount</Text>
                 <TextInput
-                    style={styles.input}
+                    style={[styles.input, {
+                        backgroundColor: theme.colors.surface,
+                        borderColor: error ? theme.colors.error : theme.colors.outline,
+                        borderWidth: error ? 2 : 1,
+                        color: theme.colors.onSurface
+                    }]}
                     placeholder="10"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={theme.colors.onSurfaceVariant}
                     value={dosage}
                     onChangeText={setDosage}
                     keyboardType="numeric"
                 />
             </View>
             <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={styles.label}>Dosage Unit</Text>
+                <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Dosage Unit</Text>
                 <Menu
                     visible={showUnitMenu}
                     onDismiss={() => setShowUnitMenu(false)}
                     anchor={
                         <TouchableOpacity
-                            style={styles.dropdownInput}
+                            style={[styles.dropdownInput, {
+                                backgroundColor: theme.colors.surface,
+                                borderColor: theme.colors.outline
+                            }]}
                             onPress={() => setShowUnitMenu(true)}
                         >
-                            <Text style={styles.inputText}>{dosageUnit}</Text>
-                            <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+                            <Text style={[styles.inputText, { color: theme.colors.onSurface }]}>{dosageUnit}</Text>
+                            <Ionicons name="chevron-down" size={20} color={theme.colors.onSurfaceVariant} />
                         </TouchableOpacity>
                     }
-                    contentStyle={{ backgroundColor: colors.surface }}
+                    contentStyle={{ backgroundColor: theme.colors.surface }}
                 >
                     {unitOptions.map((option) => (
                         <Menu.Item
@@ -60,7 +71,7 @@ export const DosageInput: React.FC<DosageInputProps> = ({
                                 setShowUnitMenu(false);
                             }}
                             title={option}
-                            titleStyle={{ color: colors.text }}
+                            titleStyle={{ color: theme.colors.onSurface }}
                         />
                     ))}
                 </Menu>
@@ -80,33 +91,26 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 14,
         fontWeight: 'bold',
-        color: colors.textSecondary,
         marginBottom: 8,
         textTransform: 'uppercase',
     },
     input: {
-        backgroundColor: colors.surface,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
         borderRadius: 12,
         paddingHorizontal: 16,
         paddingVertical: 14,
         fontSize: 16,
-        color: colors.text,
     },
     dropdownInput: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: colors.surface,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
         borderRadius: 12,
         paddingHorizontal: 16,
         paddingVertical: 14,
     },
     inputText: {
         fontSize: 16,
-        color: colors.text,
     },
 });

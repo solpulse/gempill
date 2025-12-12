@@ -3,7 +3,7 @@ import { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reani
 import { useMedication } from '../context/MedicationContext';
 import { Dose } from '../types/GempillTypes';
 import { cancelMedicationReminder } from '../utils/notifications';
-import { colors } from '../theme/colors';
+// import { colors } from '../theme/colors';
 
 export const useDailySchedule = () => {
     const { doses, updateDoseStatus } = useMedication();

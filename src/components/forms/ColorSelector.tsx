@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../theme/colors';
+import { useTheme } from 'react-native-paper';
 
 interface ColorSelectorProps {
     selectedColor: string;
@@ -10,6 +9,7 @@ interface ColorSelectorProps {
 }
 
 export const ColorSelector: React.FC<ColorSelectorProps> = ({ selectedColor, onSelectColor, options }) => {
+    const theme = useTheme();
     return (
         <View style={styles.colorRow}>
             {options.map((c, index) => (
@@ -18,7 +18,7 @@ export const ColorSelector: React.FC<ColorSelectorProps> = ({ selectedColor, onS
                     style={[
                         styles.colorCircle,
                         { backgroundColor: c },
-                        selectedColor === c && styles.selectedColor
+                        selectedColor === c && [styles.selectedColor, { borderColor: theme.colors.onSurface }]
                     ]}
                     onPress={() => onSelectColor(c)}
                 />
@@ -41,14 +41,12 @@ const styles = StyleSheet.create({
     },
     selectedColor: {
         borderWidth: 3,
-        borderColor: colors.text,
     },
     addColorButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: colors.textSecondary,
         borderStyle: 'dashed',
         justifyContent: 'center',
         alignItems: 'center',

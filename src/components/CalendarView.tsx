@@ -3,8 +3,6 @@ import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text, IconButton, useTheme } from 'react-native-paper';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { Svg, Circle, Text as SvgText } from 'react-native-svg';
-import { colors } from '../theme/colors';
-import { shadows } from '../theme/shadows';
 import { DayData } from '../utils/mockData';
 
 interface CalendarViewProps {
@@ -48,11 +46,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ currentDate, onMonth
         const progress = adherence * circumference;
 
         // Colors
-        const textColor = isToday ? colors.primary : (isCurrentMonth ? colors.text : colors.textSecondary);
-        const ringColor = adherence === 1 ? colors.success : colors.primary;
+        const textColor = isToday ? theme.colors.primary : (isCurrentMonth ? theme.colors.onSurface : theme.colors.onSurfaceVariant);
+        const ringColor = adherence === 1 ? theme.colors.tertiary : theme.colors.primary;
         // If 100% adherence, track should be same as fill (success) to avoid grey border.
         // Otherwise use surfaceVariant for the track.
-        const trackColor = adherence === 1 ? colors.success : colors.surfaceVariant;
+        const trackColor = adherence === 1 ? theme.colors.tertiary : theme.colors.surfaceVariant;
 
         return (
             <TouchableOpacity
@@ -71,7 +69,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ currentDate, onMonth
                                 cy={size / 2}
                                 r={radius}
                                 strokeWidth={strokeWidth}
-                                fill={adherence === 1 ? colors.success : 'transparent'}
+                                fill={adherence === 1 ? theme.colors.tertiary : 'transparent'}
                             />
                             {/* Progress Ring */}
                             {adherence < 1 && adherence > 0 && (
@@ -95,7 +93,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ currentDate, onMonth
                                 y={size / 2}
                                 fontSize="14"
                                 fontWeight={isToday ? "bold" : "normal"}
-                                fill={adherence === 1 ? '#fff' : textColor}
+                                fill={adherence === 1 ? theme.colors.onTertiary : textColor}
                                 textAnchor="middle"
                                 alignmentBaseline="middle"
                                 dy="1" // Optical adjustment
@@ -104,7 +102,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ currentDate, onMonth
                             </SvgText>
                         </Svg>
                     ) : (
-                        <View style={[styles.dayCircle, isToday && styles.todayCircle]}>
+                        <View style={[styles.dayCircle, isToday && { backgroundColor: theme.colors.surfaceVariant }]}>
                             <Text style={[styles.dayText, { color: textColor, fontWeight: isToday ? 'bold' : 'normal' }]}>
                                 {format(date, 'd')}
                             </Text>
@@ -116,11 +114,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ currentDate, onMonth
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: theme.colors.surface }]}>
             {/* Header */}
             <View style={styles.header}>
                 <IconButton icon="chevron-left" onPress={handlePrevMonth} />
-                <Text variant="titleLarge" style={styles.monthTitle}>
+                <Text variant="titleLarge" style={[styles.monthTitle, { color: theme.colors.onSurface }]}>
                     {format(currentDate, 'MMMM yyyy')}
                 </Text>
                 <IconButton icon="chevron-right" onPress={handleNextMonth} />
@@ -129,7 +127,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ currentDate, onMonth
             {/* Week Days */}
             <View style={styles.weekRow}>
                 {weekDays.map((day, index) => (
-                    <Text key={index} style={styles.weekDayText} variant="labelMedium">{day}</Text>
+                    <Text key={index} style={[styles.weekDayText, { color: theme.colors.onSurfaceVariant }]} variant="labelMedium">{day}</Text>
                 ))}
             </View>
 
@@ -143,11 +141,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ currentDate, onMonth
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: colors.surface,
         borderRadius: 24,
         padding: 16,
         marginBottom: 24,
-        ...shadows.medium,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     },
     header: {
         flexDirection: 'row',
@@ -157,7 +158,6 @@ const styles = StyleSheet.create({
     },
     monthTitle: {
         fontWeight: 'bold',
-        color: colors.text,
     },
     weekRow: {
         flexDirection: 'row',
@@ -165,7 +165,6 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     weekDayText: {
-        color: colors.textSecondary,
         width: 40,
         textAlign: 'center',
     },
@@ -193,9 +192,6 @@ const styles = StyleSheet.create({
         borderRadius: 18,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    todayCircle: {
-        backgroundColor: colors.surfaceVariant,
     },
     dayText: {
         fontSize: 14,

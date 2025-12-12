@@ -41,6 +41,7 @@ export type RootStackParamList = {
     Home: undefined;
     Records: undefined;
     Meds: undefined;
-    MedDetail: { medId: string };
-    AddMedication: { medication?: Medication } | undefined;
+    MedDetail: { medication: Medication };
+    AddMedication: { medication?: Medication, isOnboarding?: boolean };
+    Onboarding: undefined;
 };

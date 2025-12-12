@@ -5,18 +5,36 @@ import { CalendarView } from '../components/CalendarView';
 import { AdherenceCard } from '../components/AdherenceCard';
 import { MedicationListItem } from '../components/MedicationListItem';
 import { DayDetailModal } from '../components/DayDetailModal';
-import { colors } from '../theme/colors';
-import { shadows } from '../theme/shadows';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/GempillTypes';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMedication } from '../context/MedicationContext';
 import { useMonthlyRecords } from '../hooks/useMonthlyRecords';
+import { useTheme, Chip } from 'react-native-paper';
+import Constants from 'expo-constants';
+
+import { useUser } from '../context/UserContext';
+import { Alert } from 'react-native';
+
+type FilterType = 'Active' | 'Frozen' | 'Finished';
 
 export const RecordsScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { medications } = useMedication(); // Still need medication list for "My Pill Box"
+    const { medications } = useMedication();
+    const { resetOnboarding } = useUser();
+    const theme = useTheme();
+
+    const [selectedFilter, setSelectedFilter] = React.useState<FilterType>('Active');
+
+    const filteredMedications = React.useMemo(() => {
+        return medications.filter(med => {
+            if (selectedFilter === 'Active') return med.status === 'Active';
+            if (selectedFilter === 'Frozen') return med.status === 'Paused';
+            if (selectedFilter === 'Finished') return med.status === 'Stopped';
+            return false;
+        });
+    }, [medications, selectedFilter]);
 
     const {
         currentDate,
@@ -30,14 +48,35 @@ export const RecordsScreen = () => {
         dismissModal
     } = useMonthlyRecords();
 
+    const handleProfilePress = () => {
+        Alert.alert(
+            "Reset App",
+            "Are you sure you want to reset onboarding and clear local data?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Reset",
+                    style: 'destructive',
+                    onPress: async () => {
+                        await resetOnboarding();
+                        // Navigation will automatically switch due to validation in AppNavigator
+                    }
+                }
+            ]
+        );
+    };
+
     return (
-        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
             <ScrollView style={styles.scrollView} contentContainerStyle={[styles.contentContainer, { paddingBottom: 100 }]}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Records</Text>
-                    <TouchableOpacity>
-                        <Ionicons name="person-circle-outline" size={32} color={colors.text} />
+                    <View>
+                        <Text style={[styles.headerTitle, { color: theme.colors.onBackground }]}>Records</Text>
+                        <Text style={{ fontSize: 12, color: theme.colors.onSurfaceVariant }}>v{Constants.expoConfig?.version ?? '1.0.0'}</Text>
+                    </View>
+                    <TouchableOpacity onPress={handleProfilePress}>
+                        <Ionicons name="person-circle-outline" size={32} color={theme.colors.onSurface} />
                     </TouchableOpacity>
                 </View>
 
@@ -53,28 +92,62 @@ export const RecordsScreen = () => {
                 <AdherenceCard streakDays={monthlyStreak} percentage={monthlyPercentage} />
 
                 {/* My Pill Box */}
-                <Text style={styles.sectionTitle}>My Pill Box</Text>
+                <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>My Pill Box</Text>
 
-                {medications.map((med) => (
-                    <MedicationListItem
-                        key={med.id}
-                        name={med.name}
-                        details={`${med.dosage} ${med.dosageUnit}, ${med.frequency}`}
-                        iconColor={med.color}
-                        icon={med.icon}
-                        onPress={() => navigation.navigate('MedDetail', { medId: med.id })}
-                    />
-                ))}
+                {/* Filter Chips */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                        {(['Active', 'Frozen', 'Finished'] as const).map((filter) => {
+                            const isSelected = selectedFilter === filter;
+                            return (
+                                <Chip
+                                    key={filter}
+                                    selected={isSelected}
+                                    onPress={() => setSelectedFilter(filter)}
+                                    showSelectedOverlay
+                                    style={{ backgroundColor: isSelected ? theme.colors.secondaryContainer : theme.colors.surfaceVariant }}
+                                >
+                                    {filter}
+                                </Chip>
+                            );
+                        })}
+                    </View>
+                </ScrollView>
+
+                {filteredMedications.length === 0 ? (
+                    <Text style={{ textAlign: 'center', marginTop: 20, color: theme.colors.onSurfaceVariant }}>
+                        No {selectedFilter.toLowerCase()} medications.
+                    </Text>
+                ) : (
+                    filteredMedications.map((med) => (
+                        <MedicationListItem
+                            key={med.id}
+                            name={med.name}
+                            details={`${med.dosage} ${med.dosageUnit}, ${med.frequency}`}
+                            iconColor={med.color}
+                            icon={med.icon}
+                            onPress={() => {
+                                // Serialize dates to strings to avoid non-serializable warning
+                                const serializedMed = {
+                                    ...med,
+                                    startDate: typeof med.startDate === 'string' ? med.startDate : new Date(med.startDate).toISOString(),
+                                    pausedUntil: med.pausedUntil ? (typeof med.pausedUntil === 'string' ? med.pausedUntil : new Date(med.pausedUntil).toISOString()) : undefined
+                                };
+                                navigation.navigate('MedDetail', { medication: serializedMed as any })
+                            }}
+                        />
+                    ))
+                )}
 
             </ScrollView>
 
             {/* Add Button FAB */}
             <TouchableOpacity
-                style={[styles.fab, { bottom: 24 }]}
+                style={[styles.fab, { backgroundColor: theme.colors.primary, bottom: 24 }]}
                 onPress={() => navigation.navigate('AddMedication')}
             >
-                <Ionicons name="add" size={24} color="#fff" />
-                <Text style={styles.fabText}>Add</Text>
+                <Ionicons name="add" size={24} color={theme.colors.onPrimary} />
+                <Text style={[styles.fabText, { color: theme.colors.onPrimary }]}>Add</Text>
             </TouchableOpacity>
 
             {/* Day Detail Modal */}
@@ -94,7 +167,6 @@ export const RecordsScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.background,
     },
     scrollView: {
         flex: 1,
@@ -106,35 +178,36 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 24,
-        marginTop: 16,
+        marginBottom: 24, // theme.spacing.l
+        marginTop: 16,   // theme.spacing.m
     },
     headerTitle: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: colors.text,
     },
     sectionTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: colors.text,
-        marginBottom: 16,
+        marginBottom: 16, // theme.spacing.m
+        marginTop: 24,    // theme.spacing.l
     },
     fab: {
         position: 'absolute',
-        bottom: 24,
-        right: 24,
+        bottom: 24, // theme.spacing.l
+        right: 24,  // theme.spacing.l
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: colors.primary, // Use primary color
-        borderRadius: 16, // Slightly more squared for extended FAB
-        paddingVertical: 16,
+        borderRadius: 16, // theme.spacing.m
+        paddingVertical: 16, // theme.spacing.m
         paddingHorizontal: 20,
-        ...shadows.medium,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
     },
     fabText: {
-        color: '#fff',
         fontWeight: 'bold',
         fontSize: 16,
         marginLeft: 8,

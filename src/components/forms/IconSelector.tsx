@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors } from '../../theme/colors';
+import { useTheme } from 'react-native-paper';
 import { MedicationIcon } from '../MedicationIcon';
 
 interface IconSelectorProps {
@@ -10,6 +10,7 @@ interface IconSelectorProps {
 }
 
 export const IconSelector: React.FC<IconSelectorProps> = ({ selectedIcon, onSelectIcon, options }) => {
+    const theme = useTheme();
     return (
         <View style={styles.iconRow}>
             {options.map((i, index) => (
@@ -17,14 +18,15 @@ export const IconSelector: React.FC<IconSelectorProps> = ({ selectedIcon, onSele
                     key={index}
                     style={[
                         styles.iconCircle,
-                        selectedIcon === i && { backgroundColor: colors.successLight }
+                        { backgroundColor: theme.colors.surfaceVariant },
+                        selectedIcon === i && { backgroundColor: theme.colors.tertiaryContainer }
                     ]}
                     onPress={() => onSelectIcon(i)}
                 >
                     <MedicationIcon
                         name={i}
                         size={24}
-                        color={selectedIcon === i ? colors.success : colors.textSecondary}
+                        color={selectedIcon === i ? theme.colors.tertiary : theme.colors.onSurfaceVariant}
                     />
                 </TouchableOpacity>
             ))}
@@ -43,7 +45,6 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: colors.surfaceVariant,
         justifyContent: 'center',
         alignItems: 'center',
     },

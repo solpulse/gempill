@@ -2,8 +2,6 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Dose } from '../types/GempillTypes';
 import { PillEntry } from './PillEntry';
-import { colors } from '../theme/colors';
-import { shadows } from '../theme/shadows';
 import { Modal, Portal, Text as PaperText, Button, Switch, useTheme } from 'react-native-paper';
 import { TimePicker } from 'react-native-paper-dates';
 import { useMedication } from '../context/MedicationContext';
@@ -94,9 +92,9 @@ export const TimeGroupCard: React.FC<TimeGroupCardProps> = ({
         <View style={styles.container}>
             <TouchableOpacity onPress={onOpen} style={styles.headerRow} disabled={allTaken}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={styles.groupName}>{time}</Text>
+                    <Text style={[styles.groupName, { color: theme.colors.onSurface }]}>{time}</Text>
                     {originalTime && originalTime !== time && (
-                        <Text style={[styles.originalTime, { textDecorationLine: 'line-through' }]}>
+                        <Text style={[styles.originalTime, { textDecorationLine: 'line-through', color: theme.colors.onSurfaceVariant }]}>
                             {originalTime}
                         </Text>
                     )}
@@ -125,9 +123,16 @@ export const TimeGroupCard: React.FC<TimeGroupCardProps> = ({
                                         focused={focused}
                                         inputType="picker"
                                         use24HourClock={is24Hour}
-                                        onChange={({ hours, minutes }) => {
-                                            setHours(hours);
-                                            setMinutes(minutes);
+                                        onChange={({ hours: newHours, minutes: newMinutes }) => {
+                                            // Auto-switch to minutes after hour selection
+                                            if (focused === 'hours' && newHours !== hours) {
+                                                setHours(newHours);
+                                                setMinutes(newMinutes);
+                                                setFocused('minutes');
+                                            } else {
+                                                setHours(newHours);
+                                                setMinutes(newMinutes);
+                                            }
                                         }}
                                     />
                                 </View>
@@ -149,7 +154,7 @@ export const TimeGroupCard: React.FC<TimeGroupCardProps> = ({
                 </Modal>
             </Portal>
 
-            <View style={styles.cardContainer}>
+            <View style={[styles.cardContainer, { backgroundColor: theme.colors.surface }]}>
                 {doses.map((dose, index) => (
                     <View key={dose.id}>
                         <PillEntry
@@ -171,10 +176,15 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     cardContainer: {
-        backgroundColor: colors.surface,
         borderRadius: 24,
         paddingVertical: 16,
-        ...shadows.small,
+        // Elevation is handled by flattened style in component or Paper's shadow support, 
+        // but for now we'll use standard shadow styles or theme.
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     },
     headerRow: {
         flexDirection: 'row',
@@ -186,20 +196,17 @@ const styles = StyleSheet.create({
     groupName: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: colors.text,
     },
     timeText: {
         fontSize: 16,
-        color: colors.textSecondary,
     },
     divider: {
         height: 1,
-        backgroundColor: '#F0F0F0',
+        backgroundColor: '#F0F0F0', // Or theme.colors.outlineVariant
         marginHorizontal: 16,
     },
     originalTime: {
         fontSize: 16,
-        color: colors.textSecondary,
         marginLeft: 8,
         opacity: 0.6,
     },

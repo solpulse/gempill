@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, Modal, ScrollView } from 'react-native';
-import { Text, IconButton, Button, Surface, useTheme } from 'react-native-paper';
+import { Text, IconButton, Surface, useTheme } from 'react-native-paper';
 import { Svg, Circle, Text as SvgText } from 'react-native-svg';
-import { colors } from '../theme/colors'; // Fallback if theme not fully set up
 import { DailyLog } from '../utils/mockData';
 
 interface DayDetailModalProps {
@@ -31,7 +30,7 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
     const percentage = Math.round(adherence * 100);
 
     // Color determination
-    const progressColor = percentage === 100 ? colors.success : colors.primary;
+    const progressColor = percentage === 100 ? theme.colors.tertiary : theme.colors.primary;
 
     return (
         <Modal
@@ -41,9 +40,9 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
             onRequestClose={onDismiss}
         >
             <View style={styles.modalOverlay}>
-                <Surface style={styles.modalContent} elevation={4}>
+                <Surface style={[styles.modalContent, { backgroundColor: theme.colors.background }]} elevation={4}>
                     {/* Header */}
-                    <View style={styles.header}>
+                    <View style={[styles.header, { borderBottomColor: theme.colors.outlineVariant }]}>
                         <Text variant="titleLarge" style={styles.dateTitle}>
                             {date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                         </Text>
@@ -56,7 +55,7 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                             <Svg width={size} height={size}>
                                 {/* Background Circle */}
                                 <Circle
-                                    stroke={colors.surfaceVariant}
+                                    stroke={theme.colors.surfaceVariant}
                                     cx={size / 2}
                                     cy={size / 2}
                                     r={radius}
@@ -82,14 +81,14 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                                     y={size / 2}
                                     fontSize="24"
                                     fontWeight="bold"
-                                    fill={colors.text}
+                                    fill={theme.colors.onSurface}
                                     textAnchor="middle"
                                     alignmentBaseline="middle"
                                 >
                                     {`${percentage}%`}
                                 </SvgText>
                             </Svg>
-                            <Text variant="labelLarge" style={styles.adherenceLabel}>Daily Adherence</Text>
+                            <Text variant="labelLarge" style={[styles.adherenceLabel, { color: theme.colors.onSurfaceVariant }]}>Daily Adherence</Text>
                         </View>
 
                         {/* Logs List */}
@@ -98,25 +97,25 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                             {logs.length > 0 ? (
                                 logs.map((log, index) => {
                                     // Determine styles based on status, matching PillEntry
-                                    let badgeBg = colors.surfaceVariant;
-                                    let badgeText = colors.textSecondary;
+                                    let badgeBg = theme.colors.surfaceVariant;
+                                    let badgeText = theme.colors.onSurfaceVariant;
 
                                     if (log.status === 'Taken') {
-                                        badgeBg = colors.successLight;
-                                        badgeText = '#004D40'; // Dark green from PillEntry
+                                        badgeBg = theme.colors.tertiaryContainer;
+                                        badgeText = theme.colors.onTertiaryContainer;
                                     } else if (log.status === 'Missed' || log.status === 'Skipped') {
-                                        badgeBg = colors.errorLight;
-                                        badgeText = colors.error;
+                                        badgeBg = theme.colors.errorContainer;
+                                        badgeText = theme.colors.onErrorContainer;
                                     }
 
                                     return (
-                                        <View key={index} style={styles.logItem}>
+                                        <View key={index} style={[styles.logItem, { backgroundColor: theme.colors.surface }]}>
                                             <View style={[styles.logIcon, { backgroundColor: log.color }]}>
                                                 {/* Placeholder for icon */}
                                             </View>
                                             <View style={styles.logDetails}>
                                                 <Text variant="bodyLarge" style={styles.medName}>{log.medName}</Text>
-                                                <Text variant="bodySmall" style={styles.medTime}>{log.time}</Text>
+                                                <Text variant="bodySmall" style={[styles.medTime, { color: theme.colors.onSurfaceVariant }]}>{log.time}</Text>
                                             </View>
                                             <View style={[
                                                 styles.statusBadge,
@@ -133,7 +132,7 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                                     );
                                 })
                             ) : (
-                                <Text variant="bodyMedium" style={styles.emptyText}>No medications scheduled for this day.</Text>
+                                <Text variant="bodyMedium" style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>No medications scheduled for this day.</Text>
                             )}
                         </View>
                     </ScrollView>
@@ -150,7 +149,6 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: colors.background,
         borderTopLeftRadius: 28,
         borderTopRightRadius: 28,
         paddingBottom: 40,
@@ -162,7 +160,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         borderBottomWidth: 1,
-        borderBottomColor: colors.surfaceVariant,
     },
     dateTitle: {
         fontWeight: 'bold',
@@ -176,7 +173,6 @@ const styles = StyleSheet.create({
     },
     adherenceLabel: {
         marginTop: 8,
-        color: colors.textSecondary,
     },
     logsContainer: {
         gap: 16,
@@ -189,7 +185,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         padding: 12,
-        backgroundColor: colors.surface,
         borderRadius: 16,
         marginBottom: 8,
     },
@@ -205,9 +200,7 @@ const styles = StyleSheet.create({
     medName: {
         fontWeight: '600',
     },
-    medTime: {
-        color: colors.textSecondary,
-    },
+    medTime: {},
     statusBadge: {
         paddingHorizontal: 12,
         paddingVertical: 6,
@@ -219,7 +212,6 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         textAlign: 'center',
-        color: colors.textSecondary,
         fontStyle: 'italic',
         marginTop: 16,
     },

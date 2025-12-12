@@ -1,10 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useMedication } from '../context/MedicationContext';
 import { generateMockHistory, DayData } from '../utils/mockData';
-import { colors } from '../theme/colors';
+// import { colors } from '../theme/colors';
+import { useTheme } from 'react-native-paper';
+import { formatTimeForDisplay } from '../utils/TimeUtils';
 
 export const useMonthlyRecords = () => {
     const { doses } = useMedication();
+    const theme = useTheme();
 
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDay, setSelectedDay] = useState<{ date: Date; data: DayData } | null>(null);
@@ -29,10 +32,10 @@ export const useMonthlyRecords = () => {
 
                 // Map doses to logs
                 const logs = todayDoses.map(dose => ({
-                    time: dose.scheduledTime,
+                    time: formatTimeForDisplay(dose.scheduledTime),
                     medName: dose.name,
                     status: dose.status,
-                    color: dose.color || colors.primary,
+                    color: dose.color || theme.colors.primary,
                 }));
 
                 // Find and update today in the array

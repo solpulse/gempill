@@ -1,24 +1,47 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { colors } from '../theme/colors';
-import { shadows } from '../theme/shadows';
+import { View, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { useTheme, Text, Surface } from 'react-native-paper'; // Import Text from paper for consistency
 import { Svg, Circle } from 'react-native-svg';
 
 interface AdherenceCardProps {
     streakDays: number;
     percentage: number;
+    style?: StyleProp<ViewStyle>; // Allow overriding styles
+    showStreak?: boolean; // Sometimes we might only want the circular progress
 }
 
-export const AdherenceCard: React.FC<AdherenceCardProps> = ({ streakDays, percentage }) => {
+export const AdherenceCard: React.FC<AdherenceCardProps> = ({ streakDays, percentage, style, showStreak = true }) => {
+    const theme = useTheme();
+
     return (
-        <View style={styles.container}>
+        <Surface style={[styles.container, { backgroundColor: theme.colors.surface }, style]} elevation={2}>
             <View style={styles.textContainer}>
-                <Text style={styles.title}>Adherence Streak</Text>
-                <View style={styles.streakRow}>
-                    <Text style={styles.streakNumber}>{streakDays}</Text>
-                    <Text style={styles.streakLabel}>Days in a Row!</Text>
-                </View>
-                <Text style={styles.subtitle}>Keep up the great work!</Text>
+                <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface, marginBottom: 8 }}>
+                    {showStreak ? "Adherence Streak" : "Monthly Adherence"}
+                </Text>
+
+                {showStreak && (
+                    <View style={styles.streakRow}>
+                        <Text variant="displayMedium" style={{ fontWeight: 'bold', color: theme.colors.tertiary || theme.colors.primary, marginRight: 8 }}>
+                            {streakDays}
+                        </Text>
+                        <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                            Days in a Row!
+                        </Text>
+                    </View>
+                )}
+                {!showStreak && (
+                    <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant, maxWidth: 200 }}>
+                        {/* This text is specific to the screen using it usually, but we can make it generic or pass children */}
+                        Keep up the great work!
+                    </Text>
+                )}
+
+                {showStreak && (
+                    <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                        Keep up the great work!
+                    </Text>
+                )}
             </View>
 
             <View style={styles.chartContainer}>
@@ -26,7 +49,7 @@ export const AdherenceCard: React.FC<AdherenceCardProps> = ({ streakDays, percen
                     <Svg width={80} height={80}>
                         {/* Track */}
                         <Circle
-                            stroke={colors.successLight}
+                            stroke={theme.colors.elevation.level3} // Use a subtle track color
                             cx={40}
                             cy={40}
                             r={36}
@@ -35,7 +58,7 @@ export const AdherenceCard: React.FC<AdherenceCardProps> = ({ streakDays, percen
                         />
                         {/* Progress */}
                         <Circle
-                            stroke={colors.success}
+                            stroke={theme.colors.tertiary || theme.colors.primary}
                             cx={40}
                             cy={40}
                             r={36}
@@ -49,24 +72,22 @@ export const AdherenceCard: React.FC<AdherenceCardProps> = ({ streakDays, percen
                         />
                     </Svg>
                     <View style={styles.innerCircleOverlay}>
-                        <Text style={styles.percentageText}>{percentage}%</Text>
+                        <Text variant="titleLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
+                            {percentage}%
+                        </Text>
                     </View>
                 </View>
             </View>
-        </View>
+        </Surface>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: colors.surface,
         borderRadius: 24,
         padding: 24,
         flexDirection: 'row',
         alignItems: 'center',
-
-        marginBottom: 24,
-        ...shadows.medium,
     },
     circleContainer: {
         width: 80,
@@ -83,37 +104,12 @@ const styles = StyleSheet.create({
     textContainer: {
         flex: 1,
     },
-    title: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: colors.text,
-        marginBottom: 8,
-    },
     streakRow: {
         flexDirection: 'row',
         alignItems: 'baseline',
         marginBottom: 4,
     },
-    streakNumber: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: colors.success,
-        marginRight: 8,
-    },
-    streakLabel: {
-        fontSize: 16,
-        color: colors.textSecondary,
-    },
-    subtitle: {
-        fontSize: 14,
-        color: colors.textSecondary,
-    },
     chartContainer: {
         marginLeft: 16,
-    },
-    percentageText: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: colors.text,
     },
 });

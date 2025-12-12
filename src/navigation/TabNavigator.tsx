@@ -3,22 +3,24 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { HomeScreen } from '../screens/HomeScreen';
 import { RecordsScreen } from '../screens/RecordsScreen';
-import { colors } from '../theme/colors';
+import { useTheme } from 'react-native-paper';
 
 const Tab = createBottomTabNavigator();
 
 export const TabNavigator = () => {
+    const theme = useTheme();
+
     return (
         <Tab.Navigator
             screenOptions={({ route }) => ({
                 headerShown: false,
                 tabBarStyle: {
-                    backgroundColor: colors.surface,
+                    backgroundColor: theme.colors.surface,
                     borderTopWidth: 0,
                     elevation: 0,
                 },
-                tabBarActiveTintColor: colors.primary,
-                tabBarInactiveTintColor: colors.textSecondary,
+                tabBarActiveTintColor: theme.colors.primary,
+                tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
                 tabBarIcon: ({ focused, color, size }) => {
                     let iconName;
 

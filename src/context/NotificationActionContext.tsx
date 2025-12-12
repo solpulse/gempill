@@ -1,33 +1,26 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-interface NotificationActionData {
-    doseId: string;
-    medicationId: string;
-    medName: string;
-    scheduledTime: string;
-}
-
 interface NotificationActionContextType {
-    activeNotification: NotificationActionData | null;
-    showNotificationAction: (data: NotificationActionData) => void;
+    activeTimeGroup: string | null; // The scheduled time string (e.g. "08:00")
+    showNotificationAction: (time: string) => void;
     hideNotificationAction: () => void;
 }
 
 const NotificationActionContext = createContext<NotificationActionContextType | undefined>(undefined);
 
 export const NotificationActionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [activeNotification, setActiveNotification] = useState<NotificationActionData | null>(null);
+    const [activeTimeGroup, setActiveTimeGroup] = useState<string | null>(null);
 
-    const showNotificationAction = (data: NotificationActionData) => {
-        setActiveNotification(data);
+    const showNotificationAction = (time: string) => {
+        setActiveTimeGroup(time);
     };
 
     const hideNotificationAction = () => {
-        setActiveNotification(null);
+        setActiveTimeGroup(null);
     };
 
     return (
-        <NotificationActionContext.Provider value={{ activeNotification, showNotificationAction, hideNotificationAction }}>
+        <NotificationActionContext.Provider value={{ activeTimeGroup, showNotificationAction, hideNotificationAction }}>
             {children}
         </NotificationActionContext.Provider>
     );

@@ -35,17 +35,9 @@ class NotificationService {
 
             // Check for Exact Alarm permission (Android 12+)
             if (Platform.Version >= 31) {
-                const alarmSettings = await notifee.getNotificationSettings();
-                // Notifee wraps this check, but specifically for alarms we might need to open settings
-                // if createTriggerNotification fails or we can check via native module if available.
-                // For simplicity and robustness with Notifee:
-                // attempting to set an exact alarm usually triggers the permission flow or error if missing.
-                // However, we can proactively ask user if we detect it's missing (complex in pure JS without extra libs).
-                // Standard Notifee flow:
-                // We will optimistically prompt notification permission. exact_alarm is install-time usually but
-                // SCHEDULE_EXACT_ALARM needs explicit handling if revoked.
-                // The user can open settings via:
-                // await notifee.openAlarmPermissionSettings();
+                // The PermissionLogic is now handled by the UI layer (PermissionContext)
+                // which independently checks `settings.android.alarm`.
+                // We do nothing here to avoid double-alerting or native alerts.
             }
         } else {
             await notifee.requestPermission();

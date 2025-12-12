@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../theme/colors';
+import { useTheme } from 'react-native-paper';
 import { ScheduledTime } from '../../types/GempillTypes';
 
 interface TimeScheduleInputProps {
@@ -10,6 +10,7 @@ interface TimeScheduleInputProps {
     onAddSlot: () => void;
     onRemoveSlot: (index: number) => void;
     formatTime: (date: Date) => string;
+    error?: boolean;
 }
 
 export const TimeScheduleInput: React.FC<TimeScheduleInputProps> = ({
@@ -17,33 +18,40 @@ export const TimeScheduleInput: React.FC<TimeScheduleInputProps> = ({
     onOpenPicker,
     onAddSlot,
     onRemoveSlot,
-    formatTime
+    formatTime,
+    error
 }) => {
+    const theme = useTheme();
+
     return (
         <View>
             {times.map((item, index) => (
                 <View key={index} style={styles.timeRow}>
                     <TouchableOpacity
-                        style={styles.timeInput}
+                        style={[styles.timeInput, {
+                            backgroundColor: theme.colors.surface,
+                            borderColor: error ? theme.colors.error : theme.colors.outline,
+                            borderWidth: error ? 2 : 1
+                        }]}
                         onPress={() => onOpenPicker(index)}
                     >
-                        <Text style={styles.inputText}>{formatTime(item.time)}</Text>
-                        <Ionicons name="time-outline" size={20} color={colors.text} />
+                        <Text style={[styles.inputText, { color: theme.colors.onSurface }]}>{formatTime(item.time)}</Text>
+                        <Ionicons name="time-outline" size={20} color={theme.colors.onSurface} />
                     </TouchableOpacity>
                     {times.length > 1 && (
                         <TouchableOpacity
-                            style={styles.deleteButton}
+                            style={[styles.deleteButton, { backgroundColor: theme.colors.errorContainer }]}
                             onPress={() => onRemoveSlot(index)}
                         >
-                            <Ionicons name="trash-outline" size={20} color={colors.textSecondary} />
+                            <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
                         </TouchableOpacity>
                     )}
                 </View>
             ))}
 
             <TouchableOpacity style={styles.addTimeButton} onPress={onAddSlot}>
-                <Ionicons name="add" size={20} color={colors.success} />
-                <Text style={styles.addTimeText}>Add another time</Text>
+                <Ionicons name="add" size={20} color={theme.colors.tertiary || theme.colors.primary} />
+                <Text style={[styles.addTimeText, { color: theme.colors.tertiary || theme.colors.primary }]}>Add another time</Text>
             </TouchableOpacity>
         </View>
     );
@@ -60,9 +68,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: colors.surface,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
         borderRadius: 12,
         paddingHorizontal: 16,
         paddingVertical: 14,
@@ -70,14 +76,12 @@ const styles = StyleSheet.create({
     },
     inputText: {
         fontSize: 16,
-        color: colors.text,
     },
     deleteButton: {
         width: 48,
         height: 48,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#FFEBEE',
         borderRadius: 12,
     },
     addTimeButton: {
@@ -87,7 +91,6 @@ const styles = StyleSheet.create({
     },
     addTimeText: {
         fontSize: 16,
-        color: colors.success,
         fontWeight: 'bold',
         marginLeft: 8,
     },

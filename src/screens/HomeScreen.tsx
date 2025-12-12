@@ -4,11 +4,14 @@ import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { TimeGroupCard } from '../components/TimeGroupCard';
-import { colors } from '../theme/colors';
-import { shadows } from '../theme/shadows';
 import { useDailySchedule } from '../hooks/useDailySchedule';
+import { useTheme } from 'react-native-paper';
+import { useUser } from '../context/UserContext';
+import { formatTimeForDisplay, getTimeOfDayGreeting } from '../utils/TimeUtils';
 
 export const HomeScreen = () => {
+    const theme = useTheme();
+    const { userProfile } = useUser();
     const {
         adherence,
         progressStyle,
@@ -20,42 +23,39 @@ export const HomeScreen = () => {
     } = useDailySchedule();
 
     return (
-        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
             <ScrollView style={styles.scrollView} contentContainerStyle={[styles.contentContainer, { paddingBottom: 20 }]}>
                 {/* Header Section */}
                 <View style={styles.header}>
                     <View>
-                        <Text style={styles.brandText}>Gempill</Text>
-                        <Text style={styles.greeting}>Good Morning, Alex</Text>
-                    </View>
-                    <View style={styles.avatarContainer}>
-                        {/* Placeholder Avatar */}
-                        <Ionicons name="person" size={24} color="#FFCC80" />
+                        <Text style={[styles.greeting, { color: theme.colors.onBackground }]}>
+                            {`${getTimeOfDayGreeting()}, ${userProfile.name || 'Friend'}`}
+                        </Text>
                     </View>
                 </View>
 
                 {/* Adherence Card */}
-                <View style={styles.adherenceCard}>
+                <View style={[styles.adherenceCard, { backgroundColor: theme.colors.surface }]}>
                     <View style={styles.adherenceHeader}>
-                        <Text style={styles.adherenceLabel}>Today's Adherence</Text>
-                        <Text style={styles.adherencePercentage}>{adherence}%</Text>
+                        <Text style={[styles.adherenceLabel, { color: theme.colors.onSurface }]}>Today's Adherence</Text>
+                        <Text style={[styles.adherencePercentage, { color: theme.colors.primary }]}>{adherence}%</Text>
                     </View>
-                    <View style={styles.progressBarBackground}>
+                    <View style={[styles.progressBarBackground, { backgroundColor: theme.colors.surfaceVariant }]}>
                         <Animated.View style={[
                             styles.progressBarFill,
                             progressStyle,
-                            { backgroundColor: colors.primary }
+                            { backgroundColor: theme.colors.primary }
                         ]} />
                     </View>
                 </View>
 
                 {/* Today's Schedule Section */}
-                <Text style={styles.sectionTitle}>Today's Schedule</Text>
+                <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Today's Schedule</Text>
 
                 {sortedTimes.map((time) => (
                     <TimeGroupCard
                         key={time}
-                        timeGroupName={time} // Using time as group name for now
+                        timeGroupName={formatTimeForDisplay(time)}
                         time={time}
                         doses={dosesByTime[time]}
                         onTake={handleTake}
@@ -71,7 +71,6 @@ export const HomeScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.background,
     },
     scrollView: {
         flex: 1,
@@ -82,7 +81,6 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-
         marginBottom: 24,
         marginTop: 16,
         alignItems: 'flex-start',
@@ -90,29 +88,23 @@ const styles = StyleSheet.create({
     brandText: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: colors.text,
         marginBottom: 8,
     },
     greeting: {
         fontSize: 32,
         fontWeight: 'bold',
-        color: colors.text,
         width: '80%', // Allow wrapping
     },
-    avatarContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#FFF3E0',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+
     adherenceCard: {
-        backgroundColor: colors.surface,
         borderRadius: 24,
         padding: 20,
         marginBottom: 32,
-        ...shadows.medium,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     },
     adherenceHeader: {
         flexDirection: 'row',
@@ -123,28 +115,23 @@ const styles = StyleSheet.create({
     adherenceLabel: {
         fontSize: 16,
         fontWeight: '500',
-        color: colors.text,
     },
     adherencePercentage: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: colors.primary,
     },
     progressBarBackground: {
         height: 8,
-        backgroundColor: colors.primaryLight,
         borderRadius: 4,
         width: '100%',
     },
     progressBarFill: {
         height: 8,
-        backgroundColor: colors.primary,
         borderRadius: 4,
     },
     sectionTitle: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: colors.text,
         marginBottom: 20,
     },
 });
