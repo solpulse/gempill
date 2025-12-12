@@ -118,11 +118,11 @@ export default function App() {
   useEffect(() => {
     // Only set background color, let styles.xml handle transparency
     if (Platform.OS === 'android') {
-      // SystemUI.setBackgroundColorAsync("transparent"); 
-      // NavigationBar.setPositionAsync('absolute');
-      // NavigationBar.setBackgroundColorAsync('transparent');
+      SystemUI.setBackgroundColorAsync("transparent");
+      NavigationBar.setPositionAsync('absolute');
+      NavigationBar.setBackgroundColorAsync('transparent');
       // Optional: Set button style based on theme (assuming dark icons for light theme app)
-      // NavigationBar.setButtonStyleAsync('dark'); 
+      NavigationBar.setButtonStyleAsync('dark');
     }
 
     // Initialize Notification Service
