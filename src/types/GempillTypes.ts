@@ -20,6 +20,14 @@ export interface Dose extends Omit<Medication, 'status'> {
     scheduledTime: string;
     originalScheduledTime?: string;
     medicationId: string;
+    actionTime?: string; // ISO string of actual taken/skipped time
+}
+
+export interface MedicationHistoryItem {
+    date: string;
+    time: string;
+    status: string;
+    rawDate?: Date;
 }
 
 export interface LogEntry {

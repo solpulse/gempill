@@ -48,8 +48,14 @@ export const TimeGroupCard: React.FC<TimeGroupCardProps> = ({
     // We assume if one is rescheduled, the whole group for this time slot is.
     const originalTime = doses[0]?.originalScheduledTime;
 
-    // Check if all doses are taken
-    const allTaken = doses.every(d => d.status === 'Taken');
+    // Check if all doses are taken or skipped
+    const isCompleted = doses.every(d => d.status === 'Taken' || d.status === 'Skipped');
+
+    // If completed and was rescheduled, show the original time. Otherwise show current scheduled time.
+    const displayTime = (isCompleted && originalTime) ? originalTime : time;
+
+    // Only show strike-through original time if NOT completed and it was rescheduled
+    const showOriginalTime = !isCompleted && originalTime && originalTime !== time;
 
     const handleApplyOffset = (offsetMinutes: number) => {
         let newMinutes = initialMinutes + offsetMinutes;
@@ -90,16 +96,16 @@ export const TimeGroupCard: React.FC<TimeGroupCardProps> = ({
 
     return (
         <View style={styles.container}>
-            <TouchableOpacity onPress={onOpen} style={styles.headerRow} disabled={allTaken}>
+            <TouchableOpacity onPress={onOpen} style={styles.headerRow} disabled={isCompleted}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={[styles.groupName, { color: theme.colors.onSurface }]}>{time}</Text>
-                    {originalTime && originalTime !== time && (
+                    <Text style={[styles.groupName, { color: theme.colors.onSurface }]}>{displayTime}</Text>
+                    {showOriginalTime && (
                         <Text style={[styles.originalTime, { textDecorationLine: 'line-through', color: theme.colors.onSurfaceVariant }]}>
                             {originalTime}
                         </Text>
                     )}
                 </View>
-                {!allTaken && (
+                {!isCompleted && (
                     <MaterialCommunityIcons name="clock-edit-outline" size={24} color={theme.colors.primary} />
                 )}
             </TouchableOpacity>

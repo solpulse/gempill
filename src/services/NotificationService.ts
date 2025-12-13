@@ -107,8 +107,8 @@ class NotificationService {
         await notifee.createTriggerNotification(
             {
                 id: `med-${medicineId}-${timestamp}`, // Unique ID
-                title: `TIME TO TAKE MEDS: ${title}`,
-                body: body,
+                title: `Time to take: ${title}`,
+                body: `Don't forget to take all your daily pills!`,
                 data: {
                     doseId,
                     medicationId: medicineId,

@@ -8,6 +8,7 @@ import { useDailySchedule } from '../hooks/useDailySchedule';
 import { useTheme } from 'react-native-paper';
 import { useUser } from '../context/UserContext';
 import { formatTimeForDisplay, getTimeOfDayGreeting } from '../utils/TimeUtils';
+import { ConfettiExplosion } from '../components/ConfettiExplosion';
 
 export const HomeScreen = () => {
     const theme = useTheme();
@@ -19,7 +20,8 @@ export const HomeScreen = () => {
         dosesByTime,
         handleTake,
         handleSkip,
-        handlePending
+        handlePending,
+        showConfetti
     } = useDailySchedule();
 
     return (
@@ -46,6 +48,10 @@ export const HomeScreen = () => {
                             progressStyle,
                             { backgroundColor: theme.colors.primary }
                         ]} />
+                        {/* Confetti overlay centered on the bar */}
+                        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                            <ConfettiExplosion trigger={showConfetti} />
+                        </View>
                     </View>
                 </View>
 

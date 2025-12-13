@@ -37,14 +37,37 @@ export const useMedicationHistory = (medId: string) => {
 
         // 4. Add "Today's" LIVE entries from Context
         // Better to filter by name to be safe if IDs change
+        // 4. Add "Today's" LIVE entries from Context
+        // Better to filter by name to be safe if IDs change
         const liveTodayLogs = doses
             .filter(d => d.name === medication.name)
-            .map(dose => ({
-                date: todayStr,
-                time: dose.scheduledTime,
-                status: dose.status,
-                rawDate: new Date() // Today
-            }));
+            .map(dose => {
+                const now = new Date();
+                let displayTime = dose.scheduledTime;
+                let rawDate = new Date();
+
+                // 1. Calculate correct Date object for sorting
+                const [schedHours, schedMinutes] = dose.scheduledTime.split(':').map(Number);
+                const scheduledDate = new Date(now);
+                scheduledDate.setHours(schedHours, schedMinutes, 0, 0);
+
+                // Default to scheduled date
+                rawDate = scheduledDate;
+
+                // 2. If Taken/Skipped, use Action Time if available
+                if (dose.actionTime && (dose.status === 'Taken' || dose.status === 'Skipped')) {
+                    const actionDate = new Date(dose.actionTime);
+                    displayTime = `${actionDate.getHours().toString().padStart(2, '0')}:${actionDate.getMinutes().toString().padStart(2, '0')}`;
+                    rawDate = actionDate;
+                }
+
+                return {
+                    date: todayStr,
+                    time: displayTime,
+                    status: dose.status,
+                    rawDate: rawDate
+                };
+            });
 
         medLogs = [...medLogs, ...liveTodayLogs];
 

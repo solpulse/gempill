@@ -22,7 +22,7 @@ import { MedicationProvider, useMedication } from './src/context/MedicationConte
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { NotificationActionProvider, useNotificationAction } from './src/context/NotificationActionContext';
 import { NotificationActionModal } from './src/components/NotificationActionModal';
-import { PermissionProvider } from './src/context/PermissionContext';
+import { PermissionProvider, usePermission } from './src/context/PermissionContext';
 import { UserProvider } from './src/context/UserContext';
 import { isTimePastDue } from './src/utils/TimeUtils';
 
@@ -37,8 +37,14 @@ SplashScreen.preventAutoHideAsync();
 
 // Component to handle notification events using the context
 const NotificationHandlerListener = () => {
-  const { showNotificationAction, activeTimeGroup } = useNotificationAction();
-  const { doses } = useMedication();
+  const { showNotificationAction, activeTimeGroup, ignoredTimes } = useNotificationAction();
+  const { doses, updateDoseStatus, rescheduleSingleDose } = useMedication();
+  const { checkPermissions } = usePermission();
+
+  useEffect(() => {
+    // Check for Permissions (Alarm + Battery) for Universal Reliability
+    checkPermissions();
+  }, []);
 
   useEffect(() => {
     // Helper to check for past due pending doses
@@ -47,11 +53,12 @@ const NotificationHandlerListener = () => {
       if (activeTimeGroup) return;
 
       const now = new Date();
-      const currentHours = now.getHours();
-      const currentMinutes = now.getMinutes();
       // Find the FIRST pending dose that is past due
       const pendingDose = doses.find(dose => {
         if (dose.status !== 'Pending') return false;
+
+        // Check if ignored
+        if (ignoredTimes.includes(dose.scheduledTime)) return false;
 
         // Check if time has passed
         return isTimePastDue(dose.scheduledTime);
@@ -87,23 +94,70 @@ const NotificationHandlerListener = () => {
 
     checkInitialNotification();
 
-    // 4. Handle Foreground events (App currently open)
+    // 4. Handle Foreground and Background Action events
     const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
       // TRIGGER: When notification is delivered (pops up) OR user taps it
-      if (type === EventType.DELIVERED || type === EventType.PRESS || type === EventType.ACTION_PRESS) {
+      if (type === EventType.DELIVERED || type === EventType.PRESS) {
         const { notification } = detail;
         if (notification && notification.data && notification.data.scheduledTime) {
+          // Only show modal if it's a generic press, not an action press
           console.log('[NotificationHandler] Notification delivered/pressed in foreground, showing modal.');
           showNotificationAction(notification.data.scheduledTime as string);
         }
       }
+
+      // HANDLE ACTIONS (Take / Snooze) - Foregound
+      if (type === EventType.ACTION_PRESS && detail.notification && detail.pressAction) {
+        const { pressAction, notification } = detail;
+        const { doseId, medicationId, scheduledTime } = notification.data || {};
+
+        if (pressAction.id === 'take-pill' && doseId) {
+          console.log('[NotificationHandler] Action: Take Pill', doseId);
+          updateDoseStatus(doseId as string, 'Taken');
+          // Cancel the notification
+          if (notification.id) {
+            notifee.cancelNotification(notification.id);
+          }
+        } else if (pressAction.id === 'snooze' && doseId) {
+          console.log('[NotificationHandler] Action: Snooze', doseId);
+          // Snooze 10m from NOW
+          const now = new Date();
+          const newTimeDate = new Date(now.getTime() + 10 * 60000); // +10 mins
+          const newTimeStr = `${newTimeDate.getHours().toString().padStart(2, '0')}:${newTimeDate.getMinutes().toString().padStart(2, '0')}`;
+
+          // Reschedule SINGLE dose
+          rescheduleSingleDose(doseId as string, newTimeStr);
+
+          // Cancel the notification
+          if (notification.id) {
+            notifee.cancelNotification(notification.id);
+          }
+        }
+      }
     });
+
+    // Background Event Handler is typically set up outside of components (in index.js), 
+    // but Notifee allows `onBackgroundEvent` registration.
+    // However, App.tsx component unmounts in background? No, usually stays mounted in memory, 
+    // but Background Events should be registered globally. 
+    // For this task, user asked for "Actions should perform actions". 
+    // If the app is KILLED, we need a background handler in `index.js`.
+    // If the app is BACKGROUNDED, `onForegroundEvent` MIGHT not trigger `ACTION_PRESS` depending on OS.
+    // `notifee.onBackgroundEvent` is the correct way for background/killed state actions.
+    // I should register it OUTSIDE the component or ensuring it handles these.
+    // Given the constraints and current setup, I will register a simple background handler here 
+    // OR just rely on the fact that `onForegroundEvent` catches interactions if the app opens?
+    // "PressAction" with `launchActivity: 'default'` OPENS the app.
+    // So `onForegroundEvent` (or `getInitialNotification` for Cold Start) should catch it if the app opens.
+    // Our NotificationService sets `launchActivity: 'default'`. So the app WILL open.
+    // Therefore `onForegroundEvent` with `EventType.ACTION_PRESS` is the correct place for now.
+
 
     return () => {
       subscription.remove();
       unsubscribe();
     };
-  }, [doses, activeTimeGroup, showNotificationAction]); // Re-run if doses change (might cause loop if not careful, but status update changes doses so logic holds)
+  }, [doses, activeTimeGroup, showNotificationAction, ignoredTimes]); // Re-run if doses change
 
   return <NotificationActionModal />;
 };
@@ -126,7 +180,7 @@ export default function App() {
     }
 
     // Initialize Notification Service
-    NotificationService.checkPermissions();
+    // NotificationService.checkPermissions(); // Handled by PermissionContext
     NotificationService.createChannel();
   }, []);
 

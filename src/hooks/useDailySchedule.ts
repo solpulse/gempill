@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { useSharedValue, useAnimatedStyle, withSpring, runOnJS, useAnimatedReaction, withTiming, Easing } from 'react-native-reanimated';
 import { useMedication } from '../context/MedicationContext';
 import { Dose } from '../types/GempillTypes';
 import { cancelMedicationReminder } from '../utils/notifications';
@@ -8,6 +8,7 @@ import { cancelMedicationReminder } from '../utils/notifications';
 export const useDailySchedule = () => {
     const { doses, updateDoseStatus } = useMedication();
     const [adherence, setAdherence] = useState(0);
+    const [showConfetti, setShowConfetti] = useState(false);
 
     // Calculate Adherence
     useEffect(() => {
@@ -19,6 +20,11 @@ export const useDailySchedule = () => {
         const takenDoses = doses.filter((d) => d.status === 'Taken').length;
         const percentage = totalDoses > 0 ? Math.round((takenDoses / totalDoses) * 100) : 0;
         setAdherence(percentage);
+
+        // Reset confetti if dropped below 100 (immediate reset for UI logic)
+        if (percentage < 100) {
+            setShowConfetti(false);
+        }
     };
 
     // Actions
@@ -53,13 +59,25 @@ export const useDailySchedule = () => {
     const animatedAdherence = useSharedValue(0);
 
     useEffect(() => {
-        animatedAdherence.value = withSpring(adherence, {
-            damping: 20,
-            stiffness: 90,
-            mass: 0.5, // Lighter mass effectively reduces inertia
-            overshootClamping: adherence === 0, // Prevent overshooting when going to 0
+        animatedAdherence.value = withTiming(adherence, {
+            duration: 1000,
+            easing: Easing.out(Easing.cubic),
         });
     }, [adherence]);
+
+    // React to animation value changes to trigger confetti slightly earlier than "settled"
+    useAnimatedReaction(
+        () => {
+            return animatedAdherence.value;
+        },
+        (currentValue, previousValue) => {
+            if (adherence === 100 && currentValue > 97 && !showConfetti) {
+                // Trigger earlier at 97% for better anticipation
+                runOnJS(setShowConfetti)(true);
+            }
+        },
+        [adherence] // Dependency ensures we only check when target is 100
+    );
 
     const progressStyle = useAnimatedStyle(() => {
         return {
@@ -74,6 +92,7 @@ export const useDailySchedule = () => {
         dosesByTime,
         handleTake,
         handleSkip,
-        handlePending
+        handlePending,
+        showConfetti
     };
 };

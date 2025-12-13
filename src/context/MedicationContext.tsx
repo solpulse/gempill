@@ -12,6 +12,7 @@ interface MedicationContextType {
     updateMedication: (medication: Medication) => void;
     updateDoseStatus: (doseId: string, status: Dose['status']) => void;
     rescheduleDoseGroup: (oldTime: string, newTime: string, isPersistent: boolean) => void;
+    rescheduleSingleDose: (doseId: string, newTime: string) => void;
     stopMedication: (id: string) => void;
     pauseMedication: (id: string, days?: number) => void;
     resumeMedication: (id: string) => void;
@@ -204,7 +205,9 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
                 // For simplicity, let's assume we might need this if we implement undo.
                 // But for now, just cancel.
 
-                return { ...dose, status };
+                const actionTime = (status === 'Taken' || status === 'Skipped') ? new Date().toISOString() : undefined;
+
+                return { ...dose, status, actionTime };
             }
             return dose;
         }));
@@ -243,6 +246,32 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
                 return med;
             }));
         }
+    };
+
+    const rescheduleSingleDose = (doseId: string, newTime: string) => {
+        setDoses(prev => prev.map(dose => {
+            if (dose.id === doseId) {
+                const oldTime = dose.scheduledTime;
+
+                // Cancel old alarm
+                cancelDoseAlarm(dose, oldTime);
+
+                // Schedule new alarm (if pending) - forcing schedule even if it might be close
+                if (dose.status === 'Pending') {
+                    // Update the dose object temporarily for the alarm scheduler to pick up the new time
+                    // Or just pass explicit time
+                    const updatedDose = { ...dose, scheduledTime: newTime };
+                    scheduleDoseAlarm(updatedDose, newTime);
+                }
+
+                return {
+                    ...dose,
+                    scheduledTime: newTime,
+                    originalScheduledTime: dose.originalScheduledTime || oldTime
+                };
+            }
+            return dose;
+        }));
     };
 
     const stopMedication = (id: string) => {
@@ -309,6 +338,7 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
             updateMedication,
             updateDoseStatus,
             rescheduleDoseGroup,
+            rescheduleSingleDose,
             stopMedication,
             pauseMedication,
             resumeMedication
