@@ -3,10 +3,13 @@ set -e
 
 echo "🔨 Starting Local Release Build..."
 
+# Ensure native project is up to date
+npx expo prebuild --platform android
+
 # 1. Check Java
 if ! command -v java &> /dev/null; then
     echo "❌ Java is not installed or not in PATH."
-    echo "Please run: sudo dnf install java-17-openjdk-devel"
+    echo "Please run: brew install openjdk@17"
     exit 1
 fi
 
@@ -32,7 +35,7 @@ cd android
 chmod +x gradlew
 ./gradlew assembleRelease \
   -x lintVitalAnalyzeRelease \
-  -Pkotlin.jvm.toolchain.version=21 \
+  -Pkotlin.jvm.toolchain.version=17 \
   -Pandroid.injected.signing.store.file="$KEYSTORE_PATH" \
   -Pandroid.injected.signing.store.password="$PASS" \
   -Pandroid.injected.signing.key.alias="$ALIAS" \

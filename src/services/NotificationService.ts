@@ -1,4 +1,5 @@
 import notifee, {
+    AlarmType,
     AndroidCategory,
     AndroidImportance,
     AndroidVisibility,
@@ -100,6 +101,7 @@ class NotificationService {
             type: TriggerType.TIMESTAMP,
             timestamp: timestamp, // Time in ms
             alarmManager: {
+                type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE,
                 allowWhileIdle: true,
             },
         };
