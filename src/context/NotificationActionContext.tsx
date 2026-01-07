@@ -18,10 +18,13 @@ export const NotificationActionProvider: React.FC<{ children: ReactNode }> = ({ 
     };
 
     const hideNotificationAction = (timeToIgnore?: string) => {
-        setActiveTimeGroup(null);
         if (timeToIgnore) {
             setIgnoredTimes(prev => [...prev, timeToIgnore]);
         }
+        // Use setTimeout to allow the ignoredTimes update to propagate before clearing the active group
+        // or rely on batching. But swapping order is safer:
+        // Update ignore list first, then close modal.
+        setActiveTimeGroup(null);
     };
 
     return (

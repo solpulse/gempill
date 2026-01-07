@@ -63,6 +63,38 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
     const STORAGE_KEY_MEDS = '@medications';
     const STORAGE_KEY_DOSES = '@doses';
 
+    // Helper to get timestamp for a time string (used in loadData and scheduleDoseAlarm)
+    const getTimestampForTime = (timeStr: string): number => {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        const date = new Date();
+        date.setHours(hours, minutes, 0, 0);
+        return date.getTime();
+    };
+
+    // Helper to schedule alarms for doses (extracted to be reusable)
+    const scheduleAlarmsForDoses = (dosesToSchedule: Dose[]) => {
+        dosesToSchedule.forEach(dose => {
+            if (dose.status === 'Pending') {
+                const timestamp = getTimestampForTime(dose.scheduledTime);
+
+                // Only schedule if time is in the future
+                if (timestamp > Date.now()) {
+                    console.log(`[MedicationContext] Scheduling alarm for ${dose.name} at ${dose.scheduledTime}`);
+                    NotificationService.scheduleNaggingAlarm(
+                        timestamp,
+                        dose.name,
+                        `Time to take ${dose.frequency}`,
+                        dose.medicationId,
+                        dose.id,
+                        dose.scheduledTime
+                    );
+                } else {
+                    console.log(`[MedicationContext] Skipping past time alarm for ${dose.name} at ${dose.scheduledTime}`);
+                }
+            }
+        });
+    };
+
     // 1. Load Data on Mount
     useEffect(() => {
         const loadData = async () => {
@@ -72,9 +104,13 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
                     AsyncStorage.getItem(STORAGE_KEY_DOSES)
                 ]);
 
+                let loadedMeds: Medication[] = [];
                 if (medsJson) {
-                    setMedications(JSON.parse(medsJson));
+                    loadedMeds = JSON.parse(medsJson);
+                    setMedications(loadedMeds);
                 }
+
+                let dosesToSchedule: Dose[] = [];
 
                 if (dosesJson) {
                     const loadedDoses: Dose[] = JSON.parse(dosesJson);
@@ -84,19 +120,26 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
 
                     if (isToday) {
                         setDoses(loadedDoses);
+                        dosesToSchedule = loadedDoses;
                     } else {
                         // Doses are old or empty, regenerate for today if we have meds
-                        if (medsJson) {
-                            const meds = JSON.parse(medsJson);
-                            const newDoses = generateDosesForToday(meds);
+                        if (loadedMeds.length > 0) {
+                            const newDoses = generateDosesForToday(loadedMeds);
                             setDoses(newDoses);
+                            dosesToSchedule = newDoses;
                         }
                     }
-                } else if (medsJson) {
+                } else if (loadedMeds.length > 0) {
                     // No doses saved, but we have meds (first run after update?)
-                    const meds = JSON.parse(medsJson);
-                    const newDoses = generateDosesForToday(meds);
+                    const newDoses = generateDosesForToday(loadedMeds);
                     setDoses(newDoses);
+                    dosesToSchedule = newDoses;
+                }
+
+                // Schedule alarms for all pending doses
+                if (dosesToSchedule.length > 0) {
+                    console.log(`[MedicationContext] Scheduling alarms for ${dosesToSchedule.length} doses on startup`);
+                    scheduleAlarmsForDoses(dosesToSchedule);
                 }
             } catch (e) {
                 console.error('Failed to load medication data', e);
@@ -124,12 +167,6 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
         saveData();
     }, [medications, doses, isLoading]);
 
-    const getTimestampForTime = (timeStr: string): number => {
-        const [hours, minutes] = timeStr.split(':').map(Number);
-        const date = new Date();
-        date.setHours(hours, minutes, 0, 0);
-        return date.getTime();
-    };
 
     const scheduleDoseAlarm = (dose: Dose, specificTime?: string) => {
         const timeToSchedule = specificTime || dose.scheduledTime;

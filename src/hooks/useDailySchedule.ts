@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useSharedValue, useAnimatedStyle, withSpring, runOnJS, useAnimatedReaction, withTiming, Easing } from 'react-native-reanimated';
 import { useMedication } from '../context/MedicationContext';
 import { Dose } from '../types/GempillTypes';
-import { cancelMedicationReminder } from '../utils/notifications';
 // import { colors } from '../theme/colors';
 
 export const useDailySchedule = () => {

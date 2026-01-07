@@ -133,14 +133,14 @@ class NotificationService {
                             title: '✅ Take Pill',
                             pressAction: {
                                 id: 'take-pill',
-                                launchActivity: 'default', // Opens app to log, or logs in background if handled
+                                // No launchActivity - handled in background
                             },
                         },
                         {
                             title: '⏰ Snooze 10m',
                             pressAction: {
                                 id: 'snooze',
-                                launchActivity: 'default',
+                                // No launchActivity - handled in background
                             },
                         },
                     ],

@@ -110,7 +110,7 @@ export const NotificationActionModal: React.FC = () => {
 
     return (
         <Portal>
-            <Modal visible={true} onDismiss={hideNotificationAction} contentContainerStyle={[styles.container, { backgroundColor: theme.colors.surface }]}>
+            <Modal visible={true} onDismiss={() => activeTimeGroup && hideNotificationAction(activeTimeGroup)} contentContainerStyle={[styles.container, { backgroundColor: theme.colors.surface }]}>
                 <Animated.View style={animatedStyle}>
                     <AnimatedSizeWrapper>
                         {showReschedule ? (
