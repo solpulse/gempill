@@ -16,6 +16,7 @@ interface MedicationContextType {
     stopMedication: (id: string) => void;
     pauseMedication: (id: string, days?: number) => void;
     resumeMedication: (id: string) => void;
+    refreshDosesFromStorage: () => Promise<void>;
 }
 
 const MedicationContext = createContext<MedicationContextType | undefined>(undefined);
@@ -166,6 +167,20 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
 
         saveData();
     }, [medications, doses, isLoading]);
+
+    // 3. Refresh doses from storage (for syncing background changes)
+    const refreshDosesFromStorage = async () => {
+        try {
+            const dosesJson = await AsyncStorage.getItem(STORAGE_KEY_DOSES);
+            if (dosesJson) {
+                const loadedDoses: Dose[] = JSON.parse(dosesJson);
+                console.log('[MedicationContext] Refreshed doses from storage');
+                setDoses(loadedDoses);
+            }
+        } catch (e) {
+            console.error('Failed to refresh doses from storage', e);
+        }
+    };
 
 
     const scheduleDoseAlarm = (dose: Dose, specificTime?: string) => {
@@ -378,7 +393,8 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
             rescheduleSingleDose,
             stopMedication,
             pauseMedication,
-            resumeMedication
+            resumeMedication,
+            refreshDosesFromStorage
         }}>
             {children}
         </MedicationContext.Provider>

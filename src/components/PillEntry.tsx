@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback, memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Animated, {
     useSharedValue,
@@ -20,7 +20,7 @@ interface PillEntryProps {
     onPending: (doseId: string) => void;
 }
 
-export const PillEntry: React.FC<PillEntryProps> = ({ dose, onTake, onSkip, onPending }) => {
+const PillEntryComponent: React.FC<PillEntryProps> = ({ dose, onTake, onSkip, onPending }) => {
     const theme = useTheme();
     const colors = theme.colors; // ease of migration
 
@@ -42,21 +42,21 @@ export const PillEntry: React.FC<PillEntryProps> = ({ dose, onTake, onSkip, onPe
         });
     }, [dose.status]);
 
-    const handleTake = () => {
+    const handleTake = useCallback(() => {
         if (dose.status === 'Taken') {
             onPending(dose.id);
         } else {
             onTake(dose.id);
         }
-    };
+    }, [dose.id, dose.status, onTake, onPending]);
 
-    const handleSkip = () => {
+    const handleSkip = useCallback(() => {
         if (dose.status === 'Skipped') {
             onPending(dose.id);
         } else {
             onSkip(dose.id);
         }
-    };
+    }, [dose.id, dose.status, onSkip, onPending]);
 
     // Constants
     const BUTTON_SIZE = 44;
@@ -270,6 +270,9 @@ export const PillEntry: React.FC<PillEntryProps> = ({ dose, onTake, onSkip, onPe
         </View>
     );
 };
+
+// Memoize to prevent unnecessary re-renders when parent updates other doses
+export const PillEntry = memo(PillEntryComponent);
 
 const styles = StyleSheet.create({
     container: {

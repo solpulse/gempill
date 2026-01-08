@@ -1,14 +1,20 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { FlashList } from '@shopify/flash-list';
 import { TimeGroupCard } from '../components/TimeGroupCard';
 import { useDailySchedule } from '../hooks/useDailySchedule';
 import { useTheme } from 'react-native-paper';
 import { useUser } from '../context/UserContext';
 import { formatTimeForDisplay, getTimeOfDayGreeting } from '../utils/TimeUtils';
 import { ConfettiExplosion } from '../components/ConfettiExplosion';
+import { Dose } from '../types/GempillTypes';
+
+interface TimeGroupData {
+    time: string;
+    doses: Dose[];
+}
 
 export const HomeScreen = () => {
     const theme = useTheme();
@@ -24,52 +30,71 @@ export const HomeScreen = () => {
         showConfetti
     } = useDailySchedule();
 
+    // Memoize list data to prevent unnecessary re-renders
+    const listData = useMemo<TimeGroupData[]>(() =>
+        sortedTimes.map(time => ({ time, doses: dosesByTime[time] })),
+        [sortedTimes, dosesByTime]
+    );
+
+    // Memoize renderItem to prevent re-creation on each render
+    const renderItem = useCallback(({ item }: { item: TimeGroupData }) => (
+        <TimeGroupCard
+            timeGroupName={formatTimeForDisplay(item.time)}
+            time={item.time}
+            doses={item.doses}
+            onTake={handleTake}
+            onSkip={handleSkip}
+            onPending={handlePending}
+        />
+    ), [handleTake, handleSkip, handlePending]);
+
+    const keyExtractor = useCallback((item: TimeGroupData) => item.time, []);
+
+    // Memoize header component
+    const ListHeader = useMemo(() => (
+        <>
+            {/* Header Section */}
+            <View style={styles.header}>
+                <View>
+                    <Text style={[styles.greeting, { color: theme.colors.onBackground }]}>
+                        {`${getTimeOfDayGreeting()}, ${userProfile.name || 'Friend'}`}
+                    </Text>
+                </View>
+            </View>
+
+            {/* Adherence Card */}
+            <View style={[styles.adherenceCard, { backgroundColor: theme.colors.surface }]}>
+                <View style={styles.adherenceHeader}>
+                    <Text style={[styles.adherenceLabel, { color: theme.colors.onSurface }]}>Today's Adherence</Text>
+                    <Text style={[styles.adherencePercentage, { color: theme.colors.primary }]}>{adherence}%</Text>
+                </View>
+                <View style={[styles.progressBarBackground, { backgroundColor: theme.colors.surfaceVariant }]}>
+                    <Animated.View style={[
+                        styles.progressBarFill,
+                        progressStyle,
+                        { backgroundColor: theme.colors.primary }
+                    ]} />
+                    {/* Confetti overlay centered on the bar */}
+                    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                        <ConfettiExplosion trigger={showConfetti} />
+                    </View>
+                </View>
+            </View>
+
+            {/* Today's Schedule Section */}
+            <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Today's Schedule</Text>
+        </>
+    ), [theme, userProfile.name, adherence, progressStyle, showConfetti]);
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
-            <ScrollView style={styles.scrollView} contentContainerStyle={[styles.contentContainer, { paddingBottom: 20 }]}>
-                {/* Header Section */}
-                <View style={styles.header}>
-                    <View>
-                        <Text style={[styles.greeting, { color: theme.colors.onBackground }]}>
-                            {`${getTimeOfDayGreeting()}, ${userProfile.name || 'Friend'}`}
-                        </Text>
-                    </View>
-                </View>
-
-                {/* Adherence Card */}
-                <View style={[styles.adherenceCard, { backgroundColor: theme.colors.surface }]}>
-                    <View style={styles.adherenceHeader}>
-                        <Text style={[styles.adherenceLabel, { color: theme.colors.onSurface }]}>Today's Adherence</Text>
-                        <Text style={[styles.adherencePercentage, { color: theme.colors.primary }]}>{adherence}%</Text>
-                    </View>
-                    <View style={[styles.progressBarBackground, { backgroundColor: theme.colors.surfaceVariant }]}>
-                        <Animated.View style={[
-                            styles.progressBarFill,
-                            progressStyle,
-                            { backgroundColor: theme.colors.primary }
-                        ]} />
-                        {/* Confetti overlay centered on the bar */}
-                        <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                            <ConfettiExplosion trigger={showConfetti} />
-                        </View>
-                    </View>
-                </View>
-
-                {/* Today's Schedule Section */}
-                <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Today's Schedule</Text>
-
-                {sortedTimes.map((time) => (
-                    <TimeGroupCard
-                        key={time}
-                        timeGroupName={formatTimeForDisplay(time)}
-                        time={time}
-                        doses={dosesByTime[time]}
-                        onTake={handleTake}
-                        onSkip={handleSkip}
-                        onPending={handlePending}
-                    />
-                ))}
-            </ScrollView>
+            <FlashList
+                data={listData}
+                renderItem={renderItem}
+                keyExtractor={keyExtractor}
+                ListHeaderComponent={ListHeader}
+                contentContainerStyle={styles.contentContainer}
+            />
         </SafeAreaView>
     );
 };
@@ -78,11 +103,9 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    scrollView: {
-        flex: 1,
-    },
     contentContainer: {
         padding: 20,
+        paddingBottom: 20,
     },
     header: {
         flexDirection: 'row',
@@ -91,17 +114,11 @@ const styles = StyleSheet.create({
         marginTop: 16,
         alignItems: 'flex-start',
     },
-    brandText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 8,
-    },
     greeting: {
         fontSize: 32,
         fontWeight: 'bold',
-        width: '80%', // Allow wrapping
+        width: '80%',
     },
-
     adherenceCard: {
         borderRadius: 24,
         padding: 20,

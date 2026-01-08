@@ -15,6 +15,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import NotificationService from './src/services/NotificationService';
 import { theme } from './src/theme';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AppState } from 'react-native'; // Added AppState
@@ -38,7 +39,7 @@ SplashScreen.preventAutoHideAsync();
 // Component to handle notification events using the context
 const NotificationHandlerListener = () => {
   const { showNotificationAction, activeTimeGroup, ignoredTimes } = useNotificationAction();
-  const { doses, updateDoseStatus, rescheduleSingleDose } = useMedication();
+  const { doses, updateDoseStatus, rescheduleSingleDose, refreshDosesFromStorage } = useMedication();
   const { checkPermissions } = usePermission();
 
   useEffect(() => {
@@ -74,8 +75,10 @@ const NotificationHandlerListener = () => {
     checkPendingDoses();
 
     // 2. Listener for App State changes (Background -> Foreground)
-    const subscription = AppState.addEventListener('change', nextAppState => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
       if (nextAppState === 'active') {
+        // Refresh doses from storage first (in case background actions updated them)
+        await refreshDosesFromStorage();
         checkPendingDoses();
       }
     });
@@ -207,28 +210,30 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <UserProvider>
-          <MedicationProvider>
-            <NotificationActionProvider>
-              <PaperProvider theme={theme}>
-                <PermissionProvider>
-                  <StatusBar
-                    translucent={true}
-                    backgroundColor="transparent"
-                    barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-                  />
-                  <NotificationHandlerListener />
-                  <NavigationContainer>
-                    <AppNavigator />
-                  </NavigationContainer>
-                </PermissionProvider>
-              </PaperProvider>
-            </NotificationActionProvider>
-          </MedicationProvider>
-        </UserProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <UserProvider>
+            <MedicationProvider>
+              <NotificationActionProvider>
+                <PaperProvider theme={theme}>
+                  <PermissionProvider>
+                    <StatusBar
+                      translucent={true}
+                      backgroundColor="transparent"
+                      barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+                    />
+                    <NotificationHandlerListener />
+                    <NavigationContainer>
+                      <AppNavigator />
+                    </NavigationContainer>
+                  </PermissionProvider>
+                </PaperProvider>
+              </NotificationActionProvider>
+            </MedicationProvider>
+          </UserProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }

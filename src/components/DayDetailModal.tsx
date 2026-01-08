@@ -1,8 +1,18 @@
 import React from 'react';
-import { View, StyleSheet, Modal, ScrollView } from 'react-native';
+import { View, StyleSheet, Modal, ScrollView, Pressable } from 'react-native';
 import { Text, IconButton, Surface, useTheme } from 'react-native-paper';
 import { Svg, Circle, Text as SvgText } from 'react-native-svg';
 import { DailyLog } from '../utils/mockData';
+import Animated, {
+    FadeIn,
+    FadeOut,
+    SlideInDown,
+    SlideOutDown,
+    withSpring,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming
+} from 'react-native-reanimated';
 
 interface DayDetailModalProps {
     visible: boolean;
@@ -11,6 +21,8 @@ interface DayDetailModalProps {
     adherence: number;
     logs: DailyLog[];
 }
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export const DayDetailModal: React.FC<DayDetailModalProps> = ({
     visible,
@@ -32,115 +44,132 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
     // Color determination
     const progressColor = percentage === 100 ? theme.colors.tertiary : theme.colors.primary;
 
+    if (!visible) return null;
+
     return (
         <Modal
             visible={visible}
-            animationType="slide"
             transparent={true}
             onRequestClose={onDismiss}
+            statusBarTranslucent
         >
             <View style={styles.modalOverlay}>
-                <Surface style={[styles.modalContent, { backgroundColor: theme.colors.background }]} elevation={4}>
-                    {/* Header */}
-                    <View style={[styles.header, { borderBottomColor: theme.colors.outlineVariant }]}>
-                        <Text variant="titleLarge" style={styles.dateTitle}>
-                            {date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                        </Text>
-                        <IconButton icon="close" onPress={onDismiss} />
-                    </View>
+                {/* Animated backdrop */}
+                <AnimatedPressable
+                    style={StyleSheet.absoluteFill}
+                    onPress={onDismiss}
+                    entering={FadeIn.duration(200)}
+                    exiting={FadeOut.duration(150)}
+                >
+                    <Animated.View
+                        style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)' }]}
+                    />
+                </AnimatedPressable>
 
-                    <ScrollView contentContainerStyle={styles.scrollContent}>
-                        {/* Adherence Ring */}
-                        <View style={styles.ringContainer}>
-                            <Svg width={size} height={size}>
-                                {/* Background Circle */}
-                                <Circle
-                                    stroke={theme.colors.surfaceVariant}
-                                    cx={size / 2}
-                                    cy={size / 2}
-                                    r={radius}
-                                    strokeWidth={strokeWidth}
-                                    fill="none"
-                                />
-                                {/* Progress Circle */}
-                                <Circle
-                                    stroke={progressColor}
-                                    cx={size / 2}
-                                    cy={size / 2}
-                                    r={radius}
-                                    strokeWidth={strokeWidth}
-                                    strokeDasharray={circumference}
-                                    strokeDashoffset={circumference - progress}
-                                    strokeLinecap="round"
-                                    rotation="-90"
-                                    origin={`${size / 2}, ${size / 2}`}
-                                    fill="none"
-                                />
-                                <SvgText
-                                    x={size / 2}
-                                    y={size / 2}
-                                    fontSize="24"
-                                    fontWeight="bold"
-                                    fill={theme.colors.onSurface}
-                                    textAnchor="middle"
-                                    alignmentBaseline="middle"
-                                >
-                                    {`${percentage}%`}
-                                </SvgText>
-                            </Svg>
-                            <Text variant="labelLarge" style={[styles.adherenceLabel, { color: theme.colors.onSurfaceVariant }]}>Daily Adherence</Text>
+                {/* Animated content with spring physics */}
+                <Animated.View
+                    entering={SlideInDown.springify().damping(18).stiffness(120)}
+                    exiting={SlideOutDown.duration(200)}
+                    style={{ width: '100%' }}
+                >
+                    <Surface style={[styles.modalContent, { backgroundColor: theme.colors.background }]} elevation={4}>
+                        {/* Header */}
+                        <View style={[styles.header, { borderBottomColor: theme.colors.outlineVariant }]}>
+                            <Text variant="titleLarge" style={styles.dateTitle}>
+                                {date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                            </Text>
+                            <IconButton icon="close" onPress={onDismiss} />
                         </View>
 
-                        {/* Logs List */}
-                        <View style={styles.logsContainer}>
-                            <Text variant="titleMedium" style={styles.logsTitle}>Medication Log</Text>
-                            {logs.length > 0 ? (
-                                logs.map((log, index) => {
-                                    // Determine styles based on status, matching PillEntry
-                                    let badgeBg = theme.colors.surfaceVariant;
-                                    let badgeText = theme.colors.onSurfaceVariant;
+                        <ScrollView contentContainerStyle={styles.scrollContent}>
+                            {/* Adherence Ring */}
+                            <View style={styles.ringContainer}>
+                                <Svg width={size} height={size}>
+                                    {/* Background Circle */}
+                                    <Circle
+                                        stroke={theme.colors.surfaceVariant}
+                                        cx={size / 2}
+                                        cy={size / 2}
+                                        r={radius}
+                                        strokeWidth={strokeWidth}
+                                        fill="none"
+                                    />
+                                    {/* Progress Circle */}
+                                    <Circle
+                                        stroke={progressColor}
+                                        cx={size / 2}
+                                        cy={size / 2}
+                                        r={radius}
+                                        strokeWidth={strokeWidth}
+                                        strokeDasharray={circumference}
+                                        strokeDashoffset={circumference - progress}
+                                        strokeLinecap="round"
+                                        rotation="-90"
+                                        origin={`${size / 2}, ${size / 2}`}
+                                        fill="none"
+                                    />
+                                    <SvgText
+                                        x={size / 2}
+                                        y={size / 2}
+                                        fontSize="24"
+                                        fontWeight="bold"
+                                        fill={theme.colors.onSurface}
+                                        textAnchor="middle"
+                                        alignmentBaseline="middle"
+                                    >
+                                        {`${percentage}%`}
+                                    </SvgText>
+                                </Svg>
+                                <Text variant="labelLarge" style={[styles.adherenceLabel, { color: theme.colors.onSurfaceVariant }]}>Daily Adherence</Text>
+                            </View>
 
-                                    if (log.status === 'Taken') {
-                                        badgeBg = theme.colors.tertiaryContainer;
-                                        badgeText = theme.colors.onTertiaryContainer;
-                                    } else if (log.status === 'Missed' || log.status === 'Skipped') {
-                                        badgeBg = theme.colors.errorContainer;
-                                        badgeText = theme.colors.onErrorContainer;
-                                    }
+                            {/* Logs List */}
+                            <View style={styles.logsContainer}>
+                                <Text variant="titleMedium" style={styles.logsTitle}>Medication Log</Text>
+                                {logs.length > 0 ? (
+                                    logs.map((log, index) => {
+                                        let badgeBg = theme.colors.surfaceVariant;
+                                        let badgeText = theme.colors.onSurfaceVariant;
 
-                                    return (
-                                        <View key={index} style={[styles.logItem, { backgroundColor: theme.colors.surface }]}>
-                                            <View style={[styles.logIcon, { backgroundColor: log.color }]}>
-                                                {/* Placeholder for icon */}
-                                            </View>
-                                            <View style={styles.logDetails}>
-                                                <Text variant="bodyLarge" style={styles.medName}>{log.medName}</Text>
-                                                <Text variant="bodySmall" style={[styles.medTime, { color: theme.colors.onSurfaceVariant }]}>{log.time}</Text>
-                                            </View>
-                                            <View style={[
-                                                styles.statusBadge,
-                                                { backgroundColor: badgeBg }
-                                            ]}>
-                                                <Text style={[
-                                                    styles.statusText,
-                                                    { color: badgeText }
-                                                ]}>
-                                                    {log.status}
-                                                </Text>
-                                            </View>
-                                        </View>
-                                    );
-                                })
-                            ) : (
-                                <Text variant="bodyMedium" style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>No medications scheduled for this day.</Text>
-                            )}
-                        </View>
-                    </ScrollView>
-                </Surface>
+                                        if (log.status === 'Taken') {
+                                            badgeBg = theme.colors.tertiaryContainer;
+                                            badgeText = theme.colors.onTertiaryContainer;
+                                        } else if (log.status === 'Missed' || log.status === 'Skipped') {
+                                            badgeBg = theme.colors.errorContainer;
+                                            badgeText = theme.colors.onErrorContainer;
+                                        }
+
+                                        return (
+                                            <Animated.View
+                                                key={index}
+                                                entering={FadeIn.delay(index * 50).duration(200)}
+                                                style={[styles.logItem, { backgroundColor: theme.colors.surface }]}
+                                            >
+                                                <View style={[styles.logIcon, { backgroundColor: log.color }]} />
+                                                <View style={styles.logDetails}>
+                                                    <Text variant="bodyLarge" style={styles.medName}>{log.medName}</Text>
+                                                    <Text variant="bodySmall" style={[styles.medTime, { color: theme.colors.onSurfaceVariant }]}>{log.time}</Text>
+                                                </View>
+                                                <View style={[styles.statusBadge, { backgroundColor: badgeBg }]}>
+                                                    <Text style={[styles.statusText, { color: badgeText }]}>
+                                                        {log.status}
+                                                    </Text>
+                                                </View>
+                                            </Animated.View>
+                                        );
+                                    })
+                                ) : (
+                                    <Text variant="bodyMedium" style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>No medications scheduled for this day.</Text>
+                                )}
+                            </View>
+                        </ScrollView>
+                    </Surface>
+                </Animated.View>
             </View>
         </Modal>
     );
 };
+
 
 const styles = StyleSheet.create({
     modalOverlay: {

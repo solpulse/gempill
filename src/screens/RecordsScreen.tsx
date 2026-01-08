@@ -144,7 +144,7 @@ export const RecordsScreen = () => {
             {/* Add Button FAB */}
             <TouchableOpacity
                 style={[styles.fab, { backgroundColor: theme.colors.primary, bottom: 24 }]}
-                onPress={() => navigation.navigate('AddMedication')}
+                onPress={() => navigation.navigate('AddMedication', {})}
             >
                 <Ionicons name="add" size={24} color={theme.colors.onPrimary} />
                 <Text style={[styles.fabText, { color: theme.colors.onPrimary }]}>Add</Text>

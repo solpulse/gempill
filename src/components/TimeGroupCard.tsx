@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Dose } from '../types/GempillTypes';
 import { PillEntry } from './PillEntry';
@@ -21,7 +21,7 @@ interface TimeGroupCardProps {
     onPending: (doseId: string) => void;
 }
 
-export const TimeGroupCard: React.FC<TimeGroupCardProps> = ({
+const TimeGroupCardComponent: React.FC<TimeGroupCardProps> = ({
     timeGroupName,
     doses,
     time,
@@ -57,7 +57,7 @@ export const TimeGroupCard: React.FC<TimeGroupCardProps> = ({
     // Only show strike-through original time if NOT completed and it was rescheduled
     const showOriginalTime = !isCompleted && originalTime && originalTime !== time;
 
-    const handleApplyOffset = (offsetMinutes: number) => {
+    const handleApplyOffset = useCallback((offsetMinutes: number) => {
         let newMinutes = initialMinutes + offsetMinutes;
         let newHours = initialHours;
 
@@ -68,7 +68,7 @@ export const TimeGroupCard: React.FC<TimeGroupCardProps> = ({
 
         setMinutes(newMinutes);
         setHours(newHours);
-    };
+    }, [initialHours, initialMinutes]);
 
     const onOpen = () => {
         const [h, m] = time.split(':').map(Number);
@@ -176,6 +176,9 @@ export const TimeGroupCard: React.FC<TimeGroupCardProps> = ({
         </View>
     );
 };
+
+// Memoize to prevent unnecessary re-renders
+export const TimeGroupCard = memo(TimeGroupCardComponent);
 
 const styles = StyleSheet.create({
     container: {
