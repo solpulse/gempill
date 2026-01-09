@@ -1,6 +1,6 @@
 {
   "name": "gempill",
-  "version": "1.0.4",
+  "version": "1.0.7",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",

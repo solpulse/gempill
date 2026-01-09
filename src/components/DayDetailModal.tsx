@@ -3,15 +3,13 @@ import { View, StyleSheet, Modal, ScrollView, Pressable } from 'react-native';
 import { Text, IconButton, Surface, useTheme } from 'react-native-paper';
 import { Svg, Circle, Text as SvgText } from 'react-native-svg';
 import { DailyLog } from '../utils/mockData';
+import { MedicationIcon } from './MedicationIcon';
 import Animated, {
     FadeIn,
     FadeOut,
     SlideInDown,
     SlideOutDown,
-    withSpring,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming
+    Easing,
 } from 'react-native-reanimated';
 
 interface DayDetailModalProps {
@@ -58,18 +56,18 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                 <AnimatedPressable
                     style={StyleSheet.absoluteFill}
                     onPress={onDismiss}
-                    entering={FadeIn.duration(200)}
-                    exiting={FadeOut.duration(150)}
+                    entering={FadeIn.duration(100)}
+                    exiting={FadeOut.duration(100)}
                 >
                     <Animated.View
                         style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)' }]}
                     />
                 </AnimatedPressable>
 
-                {/* Animated content with spring physics */}
+                {/* Animated content with smooth slide */}
                 <Animated.View
-                    entering={SlideInDown.springify().damping(18).stiffness(120)}
-                    exiting={SlideOutDown.duration(200)}
+                    entering={SlideInDown.duration(150).easing(Easing.out(Easing.cubic))}
+                    exiting={SlideOutDown.duration(100)}
                     style={{ width: '100%' }}
                 >
                     <Surface style={[styles.modalContent, { backgroundColor: theme.colors.background }]} elevation={4}>
@@ -105,7 +103,7 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                                         strokeDashoffset={circumference - progress}
                                         strokeLinecap="round"
                                         rotation="-90"
-                                        origin={`${size / 2}, ${size / 2}`}
+                                        origin={`${size / 2}, ${size / 2} `}
                                         fill="none"
                                     />
                                     <SvgText
@@ -117,7 +115,7 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                                         textAnchor="middle"
                                         alignmentBaseline="middle"
                                     >
-                                        {`${percentage}%`}
+                                        {`${percentage}% `}
                                     </SvgText>
                                 </Svg>
                                 <Text variant="labelLarge" style={[styles.adherenceLabel, { color: theme.colors.onSurfaceVariant }]}>Daily Adherence</Text>
@@ -145,7 +143,9 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                                                 entering={FadeIn.delay(index * 50).duration(200)}
                                                 style={[styles.logItem, { backgroundColor: theme.colors.surface }]}
                                             >
-                                                <View style={[styles.logIcon, { backgroundColor: log.color }]} />
+                                                <View style={[styles.logIcon, { backgroundColor: log.color, justifyContent: 'center', alignItems: 'center' }]}>
+                                                    <MedicationIcon name={log.icon || 'pill'} size={24} color={theme.colors.onSurface} />
+                                                </View>
                                                 <View style={styles.logDetails}>
                                                     <Text variant="bodyLarge" style={styles.medName}>{log.medName}</Text>
                                                     <Text variant="bodySmall" style={[styles.medTime, { color: theme.colors.onSurfaceVariant }]}>{log.time}</Text>
@@ -174,14 +174,13 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
 const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: 'transparent',
         justifyContent: 'flex-end',
     },
     modalContent: {
         borderTopLeftRadius: 28,
         borderTopRightRadius: 28,
-        paddingBottom: 40,
-        maxHeight: '80%',
+        paddingBottom: 0,
     },
     header: {
         flexDirection: 'row',
@@ -195,6 +194,7 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         padding: 20,
+        paddingBottom: 40,
     },
     ringContainer: {
         alignItems: 'center',

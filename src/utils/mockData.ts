@@ -5,6 +5,7 @@ export interface DailyLog {
     time: string;
     status: 'Taken' | 'Missed' | 'Skipped' | 'Pending';
     color: string;
+    icon?: string;
 }
 
 export interface DayData {

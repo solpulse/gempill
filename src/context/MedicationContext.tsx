@@ -63,6 +63,8 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
 
     const STORAGE_KEY_MEDS = '@medications';
     const STORAGE_KEY_DOSES = '@doses';
+    const STORAGE_KEY_DOSES_DATE = '@doses_date';
+    const STORAGE_KEY_DOSE_HISTORY = '@dose_history';
 
     // Helper to get timestamp for a time string (used in loadData and scheduleDoseAlarm)
     const getTimestampForTime = (timeStr: string): number => {
@@ -96,13 +98,42 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
         });
     };
 
+    // Helper to archive doses to history
+    const archiveDosesToHistory = async (dosesToArchive: Dose[], dateStr: string) => {
+        try {
+            const historyJson = await AsyncStorage.getItem(STORAGE_KEY_DOSE_HISTORY);
+            let history: { date: string; doses: Dose[] }[] = historyJson ? JSON.parse(historyJson) : [];
+
+            // Check if we already have an entry for this date (avoid duplicates)
+            const existingIndex = history.findIndex(h => h.date === dateStr);
+            if (existingIndex >= 0) {
+                // Update existing entry
+                history[existingIndex].doses = dosesToArchive;
+            } else {
+                // Add new entry
+                history.push({ date: dateStr, doses: dosesToArchive });
+            }
+
+            // Keep only last 90 days of history
+            if (history.length > 90) {
+                history = history.slice(-90);
+            }
+
+            await AsyncStorage.setItem(STORAGE_KEY_DOSE_HISTORY, JSON.stringify(history));
+            console.log(`[MedicationContext] Archived ${dosesToArchive.length} doses for ${dateStr}`);
+        } catch (e) {
+            console.error('Failed to archive doses to history', e);
+        }
+    };
+
     // 1. Load Data on Mount
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [medsJson, dosesJson] = await Promise.all([
+                const [medsJson, dosesJson, dosesDateJson] = await Promise.all([
                     AsyncStorage.getItem(STORAGE_KEY_MEDS),
-                    AsyncStorage.getItem(STORAGE_KEY_DOSES)
+                    AsyncStorage.getItem(STORAGE_KEY_DOSES),
+                    AsyncStorage.getItem(STORAGE_KEY_DOSES_DATE)
                 ]);
 
                 let loadedMeds: Medication[] = [];
@@ -112,29 +143,41 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
                 }
 
                 let dosesToSchedule: Dose[] = [];
+                const todayStr = new Date().toDateString();
 
                 if (dosesJson) {
                     const loadedDoses: Dose[] = JSON.parse(dosesJson);
-                    // Check if doses are from today
-                    const todayStr = new Date().toDateString();
-                    const isToday = loadedDoses.length > 0 && loadedDoses[0].id.endsWith(todayStr);
+                    // Use the dedicated date key for reliable date checking
+                    const storedDate = dosesDateJson || '';
+                    const isToday = storedDate === todayStr;
 
                     if (isToday) {
+                        // Doses are from today, use them
                         setDoses(loadedDoses);
                         dosesToSchedule = loadedDoses;
                     } else {
-                        // Doses are old or empty, regenerate for today if we have meds
+                        // Doses are from a previous day
+                        // Archive old doses to history before regenerating
+                        if (loadedDoses.length > 0 && storedDate) {
+                            await archiveDosesToHistory(loadedDoses, storedDate);
+                        }
+
+                        // Regenerate fresh doses for today
                         if (loadedMeds.length > 0) {
                             const newDoses = generateDosesForToday(loadedMeds);
                             setDoses(newDoses);
                             dosesToSchedule = newDoses;
+                            // Save the new date
+                            await AsyncStorage.setItem(STORAGE_KEY_DOSES_DATE, todayStr);
                         }
                     }
                 } else if (loadedMeds.length > 0) {
-                    // No doses saved, but we have meds (first run after update?)
+                    // No doses saved, but we have meds (first run)
                     const newDoses = generateDosesForToday(loadedMeds);
                     setDoses(newDoses);
                     dosesToSchedule = newDoses;
+                    // Save the date
+                    await AsyncStorage.setItem(STORAGE_KEY_DOSES_DATE, todayStr);
                 }
 
                 // Schedule alarms for all pending doses
@@ -160,6 +203,8 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
             try {
                 await AsyncStorage.setItem(STORAGE_KEY_MEDS, JSON.stringify(medications));
                 await AsyncStorage.setItem(STORAGE_KEY_DOSES, JSON.stringify(doses));
+                // Also save the current date to track which day these doses belong to
+                await AsyncStorage.setItem(STORAGE_KEY_DOSES_DATE, new Date().toDateString());
             } catch (e) {
                 console.error('Failed to save medication data', e);
             }
