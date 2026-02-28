@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { Medication, Dose, MedicationStatus } from '../types/GempillTypes';
 import NotificationService from '../services/NotificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -126,73 +127,98 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
         }
     };
 
-    // 1. Load Data on Mount
-    useEffect(() => {
-        const loadData = async () => {
-            try {
-                const [medsJson, dosesJson, dosesDateJson] = await Promise.all([
-                    AsyncStorage.getItem(STORAGE_KEY_MEDS),
-                    AsyncStorage.getItem(STORAGE_KEY_DOSES),
-                    AsyncStorage.getItem(STORAGE_KEY_DOSES_DATE)
-                ]);
+    // 1. Load Data
+    const loadData = async () => {
+        setIsLoading(true);
+        try {
+            const [medsJson, dosesJson, dosesDateJson] = await Promise.all([
+                AsyncStorage.getItem(STORAGE_KEY_MEDS),
+                AsyncStorage.getItem(STORAGE_KEY_DOSES),
+                AsyncStorage.getItem(STORAGE_KEY_DOSES_DATE)
+            ]);
 
-                let loadedMeds: Medication[] = [];
-                if (medsJson) {
-                    loadedMeds = JSON.parse(medsJson);
-                    setMedications(loadedMeds);
+            let loadedMeds: Medication[] = [];
+            if (medsJson) {
+                loadedMeds = JSON.parse(medsJson);
+                setMedications(loadedMeds);
+            }
+
+            let dosesToSchedule: Dose[] = [];
+            const todayStr = new Date().toDateString();
+
+            // Check date to see if we need to roll over
+            const storedDate = dosesDateJson || '';
+            const isToday = storedDate === todayStr;
+
+            if (dosesJson && isToday) {
+                // Same day, load existing doses
+                const loadedDoses: Dose[] = JSON.parse(dosesJson);
+                setDoses(loadedDoses);
+                dosesToSchedule = loadedDoses;
+            } else {
+                // New day or no data
+                console.log(`[MedicationContext] New day detected (Stored: ${storedDate}, Today: ${todayStr}). Regenerating doses.`);
+
+                // 1. Archive previous day's doses if they exist
+                if (dosesJson && storedDate) {
+                    const oldDoses: Dose[] = JSON.parse(dosesJson);
+                    await archiveDosesToHistory(oldDoses, storedDate);
                 }
 
-                let dosesToSchedule: Dose[] = [];
-                const todayStr = new Date().toDateString();
-
-                if (dosesJson) {
-                    const loadedDoses: Dose[] = JSON.parse(dosesJson);
-                    // Use the dedicated date key for reliable date checking
-                    const storedDate = dosesDateJson || '';
-                    const isToday = storedDate === todayStr;
-
-                    if (isToday) {
-                        // Doses are from today, use them
-                        setDoses(loadedDoses);
-                        dosesToSchedule = loadedDoses;
-                    } else {
-                        // Doses are from a previous day
-                        // Archive old doses to history before regenerating
-                        if (loadedDoses.length > 0 && storedDate) {
-                            await archiveDosesToHistory(loadedDoses, storedDate);
-                        }
-
-                        // Regenerate fresh doses for today
-                        if (loadedMeds.length > 0) {
-                            const newDoses = generateDosesForToday(loadedMeds);
-                            setDoses(newDoses);
-                            dosesToSchedule = newDoses;
-                            // Save the new date
-                            await AsyncStorage.setItem(STORAGE_KEY_DOSES_DATE, todayStr);
-                        }
-                    }
-                } else if (loadedMeds.length > 0) {
-                    // No doses saved, but we have meds (first run)
+                // 2. Clear "Taken" status for the new day? 
+                // Actually, generateDosesForToday creates clean "Pending" doses.
+                if (loadedMeds.length > 0) {
                     const newDoses = generateDosesForToday(loadedMeds);
                     setDoses(newDoses);
                     dosesToSchedule = newDoses;
-                    // Save the date
                     await AsyncStorage.setItem(STORAGE_KEY_DOSES_DATE, todayStr);
+                } else {
+                    setDoses([]);
                 }
-
-                // Schedule alarms for all pending doses
-                if (dosesToSchedule.length > 0) {
-                    console.log(`[MedicationContext] Scheduling alarms for ${dosesToSchedule.length} doses on startup`);
-                    scheduleAlarmsForDoses(dosesToSchedule);
-                }
-            } catch (e) {
-                console.error('Failed to load medication data', e);
-            } finally {
-                setIsLoading(false);
             }
-        };
 
+            // Schedule alarms for all pending doses
+            // NOTE: With "Daily" repetition, we might not strictly need to reschedule every time app opens,
+            // but it's safe to ensure they are scheduled.
+            // However, since we now use STABLE IDs, calling this again will just update/overwrite the existing alarm,
+            // which is good for robustness.
+            if (dosesToSchedule.length > 0) {
+                // We only need to schedule if they are Pending
+                const pending = dosesToSchedule.filter(d => d.status === 'Pending');
+                if (pending.length > 0) {
+                    console.log(`[MedicationContext] Ensuring alarms for ${pending.length} pending doses`);
+                    scheduleAlarmsForDoses(pending);
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load medication data', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Initial load
+    useEffect(() => {
         loadData();
+    }, []);
+
+    // AppState listener for new day refresh
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+            if (nextAppState === 'active') {
+                const todayStr = new Date().toDateString();
+                AsyncStorage.getItem(STORAGE_KEY_DOSES_DATE).then(storedDate => {
+                    if (storedDate !== todayStr) {
+                        console.log('[MedicationContext] App resumed on a new day, refreshing data...');
+                        loadData();
+                    }
+                });
+            }
+        });
+
+        return () => {
+            subscription.remove();
+        };
     }, []);
 
     // 2. Save Data on Change
@@ -255,9 +281,7 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
 
     const cancelDoseAlarm = (dose: Dose, specificTime?: string) => {
         const timeToCancel = specificTime || dose.scheduledTime;
-        const timestamp = getTimestampForTime(timeToCancel);
-        const notificationId = `med-${dose.medicationId}-${timestamp}`;
-        NotificationService.cancelNotification(notificationId);
+        NotificationService.cancelSchedule(dose.medicationId, timeToCancel);
     };
 
     const addMedication = (newMed: Omit<Medication, 'id'>) => {
@@ -294,9 +318,9 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
     const updateDoseStatus = (doseId: string, status: Dose['status']) => {
         setDoses(prev => prev.map(dose => {
             if (dose.id === doseId) {
-                // If status is changing to Taken or Skipped, cancel the alarm
+                // If status is changing to Taken or Skipped, cancel today's alarm so it doesn't ring later
                 if (status === 'Taken' || status === 'Skipped') {
-                    cancelDoseAlarm(dose);
+                    NotificationService.cancelTodayAlarm(dose.medicationId, dose.scheduledTime);
                 }
                 // If status is changing BACK to Pending (undo?), reschedule?
                 // For simplicity, let's assume we might need this if we implement undo.
@@ -373,8 +397,15 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
 
     const stopMedication = (id: string) => {
         setMedications(prev => prev.map(med => med.id === id ? { ...med, status: 'Stopped' } : med));
-        // Remove pending doses for today
-        setDoses(prev => prev.filter(dose => !(dose.id.startsWith(id) && dose.status === 'Pending')));
+
+        // Remove pending doses for today and explicitly cancel their entire matching 14-day schedule blocks
+        setDoses(prev => {
+            const affectedDoses = prev.filter(dose => dose.id.startsWith(id) && dose.status === 'Pending');
+            // Cancel all hardware alarms across the 14 days for these slots
+            affectedDoses.forEach(dose => cancelDoseAlarm(dose));
+
+            return prev.filter(dose => !(dose.id.startsWith(id) && dose.status === 'Pending'));
+        });
     };
 
     const pauseMedication = (id: string, days?: number) => {
@@ -386,8 +417,15 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
         }
 
         setMedications(prev => prev.map(med => med.id === id ? { ...med, status: 'Paused', pausedUntil } : med));
-        // Remove pending doses for today
-        setDoses(prev => prev.filter(dose => !(dose.id.startsWith(id) && dose.status === 'Pending')));
+
+        // Remove pending doses for today and explicitly cancel their entire matching 14-day schedule blocks
+        setDoses(prev => {
+            const affectedDoses = prev.filter(dose => dose.id.startsWith(id) && dose.status === 'Pending');
+            // Cancel all hardware alarms so they don't ring while paused
+            affectedDoses.forEach(dose => cancelDoseAlarm(dose));
+
+            return prev.filter(dose => !(dose.id.startsWith(id) && dose.status === 'Pending'));
+        });
     };
 
     const resumeMedication = (id: string) => {

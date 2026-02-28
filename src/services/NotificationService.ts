@@ -6,7 +6,6 @@ import notifee, {
     AuthorizationStatus,
     TimestampTrigger,
     TriggerType,
-    RepeatFrequency,
 } from '@notifee/react-native';
 import { Platform, Alert } from 'react-native';
 
@@ -83,88 +82,114 @@ class NotificationService {
      *    For this implementation, we will use a looping sound strategy by setting `loopSound: true` (if audio is custom)
      *    OR simply re-schedule 5 follow-up notifications to nag the user every minute for 5 minutes.
      */
-    async scheduleNaggingAlarm(timestamp: number, title: string, body: string, medicineId: string, doseId: string, scheduledTime: string): Promise<void> {
+    /**
+     * 3. Schedule Daily Alarm
+     * Schedules a repeating daily notification for the medication.
+     * 
+     * Strategy:
+     * - Use `TriggerType.TIMESTAMP` with `repeatFrequency: RepeatFrequency.DAILY`.
+     * - ID must be stable (medId + doseIndex or time) so we can update it without creating duplicates.
+     * - We no longer generate unique IDs per date (e.g. no timestamp in ID).
+     */
+    async scheduleNaggingAlarm(
+        timestamp: number,
+        title: string,
+        body: string,
+        medicineId: string,
+        doseId: string,
+        scheduledTime: string
+    ): Promise<void> {
         // Ensure permissions
         await this.checkPermissions();
         await this.createChannel();
 
-        // 4. The Nag Loop logic
-        // We schedule an "Exact" alarm.
-        // To make it hard to swipe away without action:
-        // - `ongoing: true` (makes it un-dismissable by swipe)
-        // - `actions`: Add a "Take" button.
-        // - `autoCancel: false`
-        // - `pressAction`: Launch app.
+        // Ensure timestamp is in the future.
+        let baseTimestamp = timestamp;
+        if (baseTimestamp <= Date.now()) {
+            baseTimestamp += 24 * 60 * 60 * 1000;
+        }
 
-        // Schedule the initial alarm
-        const trigger: TimestampTrigger = {
-            type: TriggerType.TIMESTAMP,
-            timestamp: timestamp, // Time in ms
-            alarmManager: {
-                type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE,
-                allowWhileIdle: true,
-            },
-        };
+        // Schedule explicit standalone alarms for the next 14 days
+        for (let i = 0; i < 14; i++) {
+            const triggerTimestamp = baseTimestamp + (i * 24 * 60 * 60 * 1000);
+            const stableNotificationId = `med-schedule-${medicineId}-${scheduledTime.replace(':', '')}-day-${i}`;
 
-        await notifee.createTriggerNotification(
-            {
-                id: `med-${medicineId}-${timestamp}`, // Unique ID
-                title: `Time to take: ${title}`,
-                body: `Don't forget to take all your daily pills!`,
-                data: {
-                    doseId,
-                    medicationId: medicineId,
-                    medName: title,
-                    scheduledTime
+            const trigger: TimestampTrigger = {
+                type: TriggerType.TIMESTAMP,
+                timestamp: triggerTimestamp,
+                alarmManager: {
+                    type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE,
+                    allowWhileIdle: true,
                 },
-                android: {
-                    channelId: 'critical-alerts',
-                    smallIcon: 'ic_launcher', // verify this exists or use 'ic_small_icon'
-                    color: '#ff0000',
-                    importance: AndroidImportance.HIGH, // Heads up
-                    category: AndroidCategory.ALARM,
-                    ongoing: true, // Cannot swipe away! User MUST interact.
-                    pressAction: {
-                        id: 'default',
-                        launchActivity: 'default', // Opens app
+            };
+
+            await notifee.createTriggerNotification(
+                {
+                    id: stableNotificationId,
+                    title: `Time to take: ${title}`,
+                    body: `Don't forget to take your ${scheduledTime} dose!`,
+                    data: {
+                        doseId, // Note: This doseId might be stale for tomorrow's occurrence, but helpful for today. 
+                        medicationId: medicineId,
+                        medName: title,
+                        scheduledTime
                     },
-                    actions: [
-                        {
-                            title: '✅ Take Pill',
-                            pressAction: {
-                                id: 'take-pill',
-                                // No launchActivity - handled in background
-                            },
+                    android: {
+                        channelId: 'critical-alerts',
+                        smallIcon: 'ic_launcher',
+                        color: '#ff0000',
+                        importance: AndroidImportance.HIGH,
+                        category: AndroidCategory.ALARM,
+                        pressAction: {
+                            id: 'default',
+                            launchActivity: 'default',
                         },
-                        {
-                            title: '⏰ Snooze 10m',
-                            pressAction: {
-                                id: 'snooze',
-                                // No launchActivity - handled in background
+                        actions: [
+                            {
+                                title: '✅ Take Pill',
+                                pressAction: {
+                                    id: 'take-pill',
+                                },
                             },
+                        ],
+                        fullScreenAction: {
+                            id: 'default',
+                            launchActivity: 'default',
                         },
-                    ],
-                    // Full screen intent for "Alarm" behavior on locked screens
-                    fullScreenAction: {
-                        id: 'default',
-                        launchActivity: 'default',
                     },
                 },
-            },
-            trigger,
-        );
+                trigger,
+            );
+        }
 
-        // "Looping" logic explanation:
-        // If the user ignores this, we want it to ring again?
-        // With `ongoing: true`, it stays in the tray.
-        // With `category: 'alarm'`, it might sound continuously depending on OS/Setting.
-        // If we strictly need it to "Re-ring" every minute:
-        // We would schedule additional notifications:
-        // scheduleNaggingAlarm(timestamp + 60000, ...);
-        // cancel them when user takes action.
+        console.log(`[NotificationService] Scheduled 14 standalone exact alarms for ${medicineId} at ${scheduledTime.replace(':', '')}`);
     }
 
-    // Helper to cancel
+    async cancelSchedule(medicineId: string, scheduledTime: string) {
+        console.log(`[NotificationService] Cancelling 14 sequential alarms for: med-schedule-${medicineId}-${scheduledTime.replace(':', '')}`);
+        for (let i = 0; i < 14; i++) {
+            const stableNotificationId = `med-schedule-${medicineId}-${scheduledTime.replace(':', '')}-day-${i}`;
+            await notifee.cancelNotification(stableNotificationId);
+        }
+        // Cancel the old repeating one just in case the user is migrating from an older version
+        const oldStableNotificationId = `med-schedule-${medicineId}-${scheduledTime.replace(':', '')}`;
+        await notifee.cancelNotification(oldStableNotificationId);
+    }
+
+    // Helper to cancel ONLY today's alarm when the user explicitly takes the pill inside the app UI
+    async cancelTodayAlarm(medicineId: string, scheduledTime: string) {
+        // Because loadData() repopulates today as day-0 every time the app opens, 
+        // taking a pill inside the active app app means we just need to cancel day-0
+        const stableNotificationId = `med-schedule-${medicineId}-${scheduledTime.replace(':', '')}-day-0`;
+        console.log(`[NotificationService] Cancelling ONLY today's alarm: ${stableNotificationId}`);
+        await notifee.cancelNotification(stableNotificationId);
+
+        // Also cancel standard schema in case migrating
+        const oldStableNotificationId = `med-schedule-${medicineId}-${scheduledTime.replace(':', '')}`;
+        await notifee.cancelNotification(oldStableNotificationId);
+    }
+
+    // Helper to cancel generic
     async cancelNotification(notificationId: string) {
         await notifee.cancelNotification(notificationId);
     }
