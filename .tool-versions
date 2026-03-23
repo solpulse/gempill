@@ -1,5 +1,6 @@
 node 22
 yarn 1.22.22
-java openjdk-17.0.10
+java openjdk-17
 ruby 3.2
-watchman latest
+
+# watchman latest
