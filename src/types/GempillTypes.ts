@@ -16,7 +16,7 @@ export interface Medication {
 }
 
 export interface Dose extends Omit<Medication, 'status'> {
-    status: 'Pending' | 'Taken' | 'Skipped';
+    status: 'Pending' | 'Taken' | 'Skipped' | 'Missed';
     scheduledTime: string;
     originalScheduledTime?: string;
     medicationId: string;

@@ -36,7 +36,7 @@ const generateDosesForToday = (meds: Medication[]): Dose[] => {
             if (!med.pausedUntil) return; // Indefinite pause
             if (new Date() < med.pausedUntil) return; // Still paused
 
-            // If pausedUntil is in the past, effectively it's active again, 
+            // If pausedUntil is in the past, effectively it's active again,
             // but we might want to update status back to Active lazily or just allow generating doses.
             // For this implementation, we'll assume the context handles status updates or we allow generation.
         }
@@ -162,10 +162,16 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
                 // 1. Archive previous day's doses if they exist
                 if (dosesJson && storedDate) {
                     const oldDoses: Dose[] = JSON.parse(dosesJson);
-                    await archiveDosesToHistory(oldDoses, storedDate);
+                    const processedOldDoses = oldDoses.map(dose => {
+                        if (dose.status === 'Pending') {
+                            return { ...dose, status: 'Missed' as const };
+                        }
+                        return dose;
+                    });
+                    await archiveDosesToHistory(processedOldDoses, storedDate);
                 }
 
-                // 2. Clear "Taken" status for the new day? 
+                // 2. Clear "Taken" status for the new day?
                 // Actually, generateDosesForToday creates clean "Pending" doses.
                 if (loadedMeds.length > 0) {
                     const newDoses = generateDosesForToday(loadedMeds);
@@ -264,8 +270,8 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
             console.log('[MedicationContext] Warning: Time is in the past. Notifee might trigger immediately or ignore.');
         }
 
-        // Only schedule if it's in the future or very recent? 
-        // For now, schedule everything. Notifee handles past triggers by firing immediately if configured, 
+        // Only schedule if it's in the future or very recent?
+        // For now, schedule everything. Notifee handles past triggers by firing immediately if configured,
         // or we can add a check: if (timestamp > Date.now()) ...
         // But "Nagging" implies we shouldn't miss it.
 
@@ -443,13 +449,13 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
             return updatedMeds;
         });
 
-        // HACK: We need the updated medication to generate doses. 
+        // HACK: We need the updated medication to generate doses.
         // We'll rely on the previous state but force the status to Active for generation.
         setMedications(currentMeds => {
             const med = currentMeds.find(m => m.id === id);
             if (med && med.status === 'Active') {
                 // It's already updated in the previous setMedications call? No, batching.
-                // React batching might make this tricky. 
+                // React batching might make this tricky.
                 // Let's use a functional update that handles both or just do it in one go if possible.
                 // Actually, let's just use the `medications` from closure but that's stale.
                 // Correct way:
