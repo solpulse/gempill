@@ -4,6 +4,7 @@ import notifee, {
     AndroidImportance,
     AndroidVisibility,
     AuthorizationStatus,
+    RepeatFrequency,
     TimestampTrigger,
     TriggerType,
 } from '@notifee/react-native';
@@ -85,7 +86,7 @@ class NotificationService {
     /**
      * 3. Schedule Daily Alarm
      * Schedules a repeating daily notification for the medication.
-     * 
+     *
      * Strategy:
      * - Use `TriggerType.TIMESTAMP` with `repeatFrequency: RepeatFrequency.DAILY`.
      * - ID must be stable (medId + doseIndex or time) so we can update it without creating duplicates.
@@ -109,84 +110,86 @@ class NotificationService {
             baseTimestamp += 24 * 60 * 60 * 1000;
         }
 
-        // Schedule explicit standalone alarms for the next 14 days
-        for (let i = 0; i < 14; i++) {
-            const triggerTimestamp = baseTimestamp + (i * 24 * 60 * 60 * 1000);
-            const stableNotificationId = `med-schedule-${medicineId}-${scheduledTime.replace(':', '')}-day-${i}`;
+        const stableNotificationId = `med-schedule-${medicineId}-${scheduledTime.replace(':', '')}`;
 
-            const trigger: TimestampTrigger = {
-                type: TriggerType.TIMESTAMP,
-                timestamp: triggerTimestamp,
-                alarmManager: {
-                    type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE,
-                    allowWhileIdle: true,
+        const trigger: TimestampTrigger = {
+            type: TriggerType.TIMESTAMP,
+            timestamp: baseTimestamp,
+            repeatFrequency: RepeatFrequency.DAILY,
+            alarmManager: {
+                // SET_ALARM_CLOCK is the most aggressive and reliable trigger for apps like this
+                type: AlarmType.SET_ALARM_CLOCK,
+                allowWhileIdle: true,
+            },
+        };
+
+        await notifee.createTriggerNotification(
+            {
+                id: stableNotificationId,
+                title: `Time to take: ${title}`,
+                body: `Don't forget to take your ${scheduledTime} dose!`,
+                data: {
+                    doseId, // We use this in actions, might be stale tomorrow but state management can use medId/time fallback
+                    medicationId: medicineId,
+                    medName: title,
+                    scheduledTime
                 },
-            };
-
-            await notifee.createTriggerNotification(
-                {
-                    id: stableNotificationId,
-                    title: `Time to take: ${title}`,
-                    body: `Don't forget to take your ${scheduledTime} dose!`,
-                    data: {
-                        doseId, // Note: This doseId might be stale for tomorrow's occurrence, but helpful for today. 
-                        medicationId: medicineId,
-                        medName: title,
-                        scheduledTime
+                android: {
+                    channelId: 'critical-alerts',
+                    smallIcon: 'ic_launcher',
+                    color: '#ff0000',
+                    importance: AndroidImportance.HIGH,
+                    category: AndroidCategory.ALARM,
+                    pressAction: {
+                        id: 'default',
+                        launchActivity: 'default',
                     },
-                    android: {
-                        channelId: 'critical-alerts',
-                        smallIcon: 'ic_launcher',
-                        color: '#ff0000',
-                        importance: AndroidImportance.HIGH,
-                        category: AndroidCategory.ALARM,
-                        pressAction: {
-                            id: 'default',
-                            launchActivity: 'default',
-                        },
-                        actions: [
-                            {
-                                title: '✅ Take Pill',
-                                pressAction: {
-                                    id: 'take-pill',
-                                },
+                    actions: [
+                        {
+                            title: '✅ Take Pill',
+                            pressAction: {
+                                id: 'take-pill',
                             },
-                        ],
-                        fullScreenAction: {
-                            id: 'default',
-                            launchActivity: 'default',
                         },
+                    ],
+                    fullScreenAction: {
+                        id: 'default',
+                        launchActivity: 'default',
                     },
                 },
-                trigger,
-            );
-        }
+            },
+            trigger,
+        );
 
-        console.log(`[NotificationService] Scheduled 14 standalone exact alarms for ${medicineId} at ${scheduledTime.replace(':', '')}`);
+        console.log(`[NotificationService] Scheduled repeating daily alarm for ${medicineId} at ${scheduledTime.replace(':', '')}`);
     }
 
     async cancelSchedule(medicineId: string, scheduledTime: string) {
-        console.log(`[NotificationService] Cancelling 14 sequential alarms for: med-schedule-${medicineId}-${scheduledTime.replace(':', '')}`);
+        const stableNotificationId = `med-schedule-${medicineId}-${scheduledTime.replace(':', '')}`;
+        console.log(`[NotificationService] Cancelling alarm: ${stableNotificationId}`);
+        await notifee.cancelNotification(stableNotificationId);
+
+        // Cancel old legacy 14-day schedule pattern just in case user is migrating
         for (let i = 0; i < 14; i++) {
-            const stableNotificationId = `med-schedule-${medicineId}-${scheduledTime.replace(':', '')}-day-${i}`;
-            await notifee.cancelNotification(stableNotificationId);
+            const oldNotificationId = `med-schedule-${medicineId}-${scheduledTime.replace(':', '')}-day-${i}`;
+            await notifee.cancelNotification(oldNotificationId);
         }
-        // Cancel the old repeating one just in case the user is migrating from an older version
-        const oldStableNotificationId = `med-schedule-${medicineId}-${scheduledTime.replace(':', '')}`;
-        await notifee.cancelNotification(oldStableNotificationId);
     }
 
     // Helper to cancel ONLY today's alarm when the user explicitly takes the pill inside the app UI
     async cancelTodayAlarm(medicineId: string, scheduledTime: string) {
-        // Because loadData() repopulates today as day-0 every time the app opens, 
-        // taking a pill inside the active app app means we just need to cancel day-0
-        const stableNotificationId = `med-schedule-${medicineId}-${scheduledTime.replace(':', '')}-day-0`;
-        console.log(`[NotificationService] Cancelling ONLY today's alarm: ${stableNotificationId}`);
+        // Since we now use a daily repeating alarm, cancelling it would cancel it forever.
+        // Instead, we just cancel it and the MedicationContext will reschedule it for tomorrow!
+        // The rescheduling logic should ensure the next trigger is tomorrow.
+        const stableNotificationId = `med-schedule-${medicineId}-${scheduledTime.replace(':', '')}`;
+        console.log(`[NotificationService] Cancelling today's alarm (will be rescheduled for tomorrow): ${stableNotificationId}`);
         await notifee.cancelNotification(stableNotificationId);
 
-        // Also cancel standard schema in case migrating
-        const oldStableNotificationId = `med-schedule-${medicineId}-${scheduledTime.replace(':', '')}`;
-        await notifee.cancelNotification(oldStableNotificationId);
+        // Cancel old legacy 14-day schedule pattern just in case user is migrating
+        for (let i = 0; i < 14; i++) {
+            const oldNotificationId = `med-schedule-${medicineId}-${scheduledTime.replace(':', '')}-day-${i}`;
+            await notifee.cancelNotification(oldNotificationId);
+        }
     }
 
     // Helper to cancel generic
