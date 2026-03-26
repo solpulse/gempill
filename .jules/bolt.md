@@ -1,0 +1,3 @@
+## 2024-05-24 - Unmemoized Hook Returns Defeat Downstream Memoization
+**Learning:** Returning unmemoized arrays/objects/functions from a custom hook (`useDailySchedule.ts`) silently defeats memoization strategies (`useMemo`, `useCallback`, `React.memo`) in the components consuming it. Even if the consumer tries to use `useMemo` on the returned data, the reference to the data changes every render, causing the `FlashList` to re-render all items unnecessarily on unrelated state changes (like adherence/confetti animation).
+**Action:** Always memoize derived state and function handlers inside custom hooks using `useMemo` and `useCallback` when they are expected to be used as dependencies or passed to child components.
