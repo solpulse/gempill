@@ -151,6 +151,12 @@ class NotificationService {
                                 id: 'take-pill',
                             },
                         },
+                        {
+                            title: '⏰ +10 Min',
+                            pressAction: {
+                                id: 'snooze',
+                            },
+                        },
                     ],
                     fullScreenAction: {
                         id: 'default',

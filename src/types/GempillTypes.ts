@@ -1,4 +1,4 @@
-export type MedicationStatus = 'Active' | 'Paused' | 'Stopped';
+export type MedicationStatus = 'Active' | 'Paused' | 'Finished' | 'Cancelled';
 
 export interface Medication {
     id: string;

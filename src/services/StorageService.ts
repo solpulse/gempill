@@ -52,6 +52,26 @@ class StorageService {
                 actionTime
             };
 
+            // Handle notification cancellation and reschedule for tomorrow!
+            if (status === 'Taken' || status === 'Skipped') {
+                const dose = doses[doseIndex];
+                await NotificationService.cancelTodayAlarm(dose.medicationId, dose.scheduledTime);
+
+                const timeParts = dose.scheduledTime.split(':').map(Number);
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                tomorrow.setHours(timeParts[0], timeParts[1], 0, 0);
+
+                await NotificationService.scheduleNaggingAlarm(
+                    tomorrow.getTime(),
+                    dose.name,
+                    `Time to take ${dose.frequency}`,
+                    dose.medicationId,
+                    dose.id,
+                    dose.scheduledTime
+                );
+            }
+
             // Save back to storage
             await AsyncStorage.setItem(STORAGE_KEY_DOSES, JSON.stringify(doses));
             console.log(`[StorageService] Dose ${doseId} updated to ${status}`);
