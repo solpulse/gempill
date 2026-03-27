@@ -39,21 +39,32 @@ export const useMedicationHistory = (medId: string) => {
     const { history, adherencePercentage, takenCount, expectedCount } = useMemo(() => {
         if (!medication) return { history: [], adherencePercentage: 0, takenCount: 0, expectedCount: 0 };
 
-        const todayStr = new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+        const now = new Date();
+        const todayStr = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`;
 
         // 1. Get historical logs from archived doses
         let medLogs: { date: string; time: string; status: string; rawDate: Date }[] = [];
 
+        // Cache for parsed time strings to avoid repeated splitting
+        const timeCache: Record<string, [number, number]> = {};
+
         archivedHistory.forEach(entry => {
             // Parse the date string (it's stored as toDateString() format like "Thu Jan 09 2026")
             const entryDate = new Date(entry.date);
-            const entryDateStr = entryDate.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+            const entryDateStr = `${entryDate.getMonth() + 1}/${entryDate.getDate()}/${entryDate.getFullYear()}`;
 
             // Filter doses for this medication
             entry.doses
                 .filter(d => d.name === medication.name || d.medicationId === medication.id)
                 .forEach(dose => {
-                    const [schedHours, schedMinutes] = dose.scheduledTime.split(':').map(Number);
+                    let parsedTime = timeCache[dose.scheduledTime];
+                    if (!parsedTime) {
+                        const [h, m] = dose.scheduledTime.split(':').map(Number);
+                        parsedTime = [h, m];
+                        timeCache[dose.scheduledTime] = parsedTime;
+                    }
+                    const [schedHours, schedMinutes] = parsedTime;
+
                     const rawDate = new Date(entryDate);
                     rawDate.setHours(schedHours, schedMinutes, 0, 0);
 
@@ -78,12 +89,18 @@ export const useMedicationHistory = (medId: string) => {
         const liveTodayLogs = doses
             .filter(d => d.name === medication.name || d.medicationId === medication.id)
             .map(dose => {
-                const now = new Date();
                 let displayTime = dose.scheduledTime;
-                let rawDate = new Date();
+                let rawDate: Date;
 
                 // Calculate correct Date object for sorting
-                const [schedHours, schedMinutes] = dose.scheduledTime.split(':').map(Number);
+                let parsedTime = timeCache[dose.scheduledTime];
+                if (!parsedTime) {
+                    const [h, m] = dose.scheduledTime.split(':').map(Number);
+                    parsedTime = [h, m];
+                    timeCache[dose.scheduledTime] = parsedTime;
+                }
+                const [schedHours, schedMinutes] = parsedTime;
+
                 const scheduledDate = new Date(now);
                 scheduledDate.setHours(schedHours, schedMinutes, 0, 0);
 
