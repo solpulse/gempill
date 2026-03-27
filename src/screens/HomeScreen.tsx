@@ -169,13 +169,13 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     emptyContainer: {
-        flex: 1,
+        padding: 40,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingTop: 40,
     },
     emptyText: {
         fontSize: 16,
-        fontWeight: '500',
+        textAlign: 'center',
+        fontStyle: 'italic',
     },
 });
