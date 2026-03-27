@@ -50,6 +50,14 @@ export const HomeScreen = () => {
 
     const keyExtractor = useCallback((item: TimeGroupData) => item.time, []);
 
+    const ListEmpty = useMemo(() => (
+        <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
+                No medications scheduled for today.
+            </Text>
+        </View>
+    ), [theme.colors.onSurfaceVariant]);
+
     // Memoize header component
     const ListHeader = useMemo(() => (
         <>
@@ -93,6 +101,8 @@ export const HomeScreen = () => {
                 renderItem={renderItem}
                 keyExtractor={keyExtractor}
                 ListHeaderComponent={ListHeader}
+                ListEmptyComponent={ListEmpty}
+                estimatedItemSize={200}
                 contentContainerStyle={styles.contentContainer}
             />
         </SafeAreaView>
@@ -156,5 +166,15 @@ const styles = StyleSheet.create({
         fontSize: 22,
         fontWeight: 'bold',
         marginBottom: 20,
+    },
+    emptyContainer: {
+        padding: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    emptyText: {
+        fontSize: 16,
+        textAlign: 'center',
+        fontStyle: 'italic',
     },
 });
