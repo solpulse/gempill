@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSharedValue, useAnimatedStyle, withSpring, runOnJS, useAnimatedReaction, withTiming, Easing } from 'react-native-reanimated';
 import { useMedication } from '../context/MedicationContext';
 import { Dose } from '../types/GempillTypes';
@@ -27,32 +27,38 @@ export const useDailySchedule = () => {
     };
 
     // Actions
-    const handleTake = async (doseId: string) => {
+    // ⚡ Bolt: Memoize action handlers to prevent unnecessary child re-renders
+    const handleTake = useCallback(async (doseId: string) => {
         updateDoseStatus(doseId, 'Taken');
         // await cancelMedicationReminder(doseId); // Commented out likely because notification utils might not be fully linked or mocked, but keeping logic
-    };
+    }, [updateDoseStatus]);
 
-    const handleSkip = async (doseId: string) => {
+    const handleSkip = useCallback(async (doseId: string) => {
         updateDoseStatus(doseId, 'Skipped');
         // await cancelMedicationReminder(doseId);
-    };
+    }, [updateDoseStatus]);
 
-    const handlePending = (doseId: string) => {
+    const handlePending = useCallback((doseId: string) => {
         updateDoseStatus(doseId, 'Pending');
-    };
+    }, [updateDoseStatus]);
 
     // Grouping & Sorting
-    const dosesByTime = doses.reduce((acc, dose) => {
-        if (!acc[dose.scheduledTime]) {
-            acc[dose.scheduledTime] = [];
-        }
-        acc[dose.scheduledTime].push(dose);
-        return acc;
-    }, {} as Record<string, Dose[]>);
+    // ⚡ Bolt: Memoize derived state to prevent FlashList from re-rendering all items on every state change (e.g. confetti animation)
+    const dosesByTime = useMemo(() => {
+        return doses.reduce((acc, dose) => {
+            if (!acc[dose.scheduledTime]) {
+                acc[dose.scheduledTime] = [];
+            }
+            acc[dose.scheduledTime].push(dose);
+            return acc;
+        }, {} as Record<string, Dose[]>);
+    }, [doses]);
 
-    const sortedTimes = Object.keys(dosesByTime).sort((a, b) => {
-        return a.localeCompare(b);
-    });
+    const sortedTimes = useMemo(() => {
+        return Object.keys(dosesByTime).sort((a, b) => {
+            return a.localeCompare(b);
+        });
+    }, [dosesByTime]);
 
     // Animation
     const animatedAdherence = useSharedValue(0);
