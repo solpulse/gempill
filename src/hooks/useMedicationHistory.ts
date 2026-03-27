@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useMedication } from '../context/MedicationContext';
 import { Medication, Dose } from '../types/GempillTypes';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { formatDateMMDDYYYY } from '../utils/TimeUtils';
 
 const STORAGE_KEY_DOSE_HISTORY = '@dose_history';
 
@@ -39,7 +40,9 @@ export const useMedicationHistory = (medId: string) => {
     const { history, adherencePercentage, takenCount, expectedCount } = useMemo(() => {
         if (!medication) return { history: [], adherencePercentage: 0, takenCount: 0, expectedCount: 0 };
 
-        const todayStr = new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+        // ⚡ Bolt: Fast date formatting using manual string construction (formatDateMMDDYYYY)
+        // instead of toLocaleDateString which is a known performance bottleneck inside loops.
+        const todayStr = formatDateMMDDYYYY(new Date());
 
         // 1. Get historical logs from archived doses
         let medLogs: { date: string; time: string; status: string; rawDate: Date }[] = [];
@@ -47,7 +50,7 @@ export const useMedicationHistory = (medId: string) => {
         archivedHistory.forEach(entry => {
             // Parse the date string (it's stored as toDateString() format like "Thu Jan 09 2026")
             const entryDate = new Date(entry.date);
-            const entryDateStr = entryDate.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+            const entryDateStr = formatDateMMDDYYYY(entryDate);
 
             // Filter doses for this medication
             entry.doses

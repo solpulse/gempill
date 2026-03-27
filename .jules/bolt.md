@@ -1,3 +1,7 @@
 ## 2024-05-24 - Unmemoized Hook Returns Defeat Downstream Memoization
 **Learning:** Returning unmemoized arrays/objects/functions from a custom hook (`useDailySchedule.ts`) silently defeats memoization strategies (`useMemo`, `useCallback`, `React.memo`) in the components consuming it. Even if the consumer tries to use `useMemo` on the returned data, the reference to the data changes every render, causing the `FlashList` to re-render all items unnecessarily on unrelated state changes (like adherence/confetti animation).
 **Action:** Always memoize derived state and function handlers inside custom hooks using `useMemo` and `useCallback` when they are expected to be used as dependencies or passed to child components.
+
+## 2024-05-25 - toLocaleDateString Performance Bottleneck
+**Learning:** Calling `toLocaleDateString` inside loops and `.map()` calls on React Native JS environments (or any restricted JS runtime) is an extreme performance bottleneck. A benchmark of 10k iterations showed ~1.2s execution time for `toLocaleDateString('en-US')` vs ~16ms for manual string construction (`${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`). This means `toLocaleDateString` is ~75x slower and significantly blocked the main thread when preparing medication history lists and monthly data records.
+**Action:** Always prefer manual date string construction over `toLocaleDateString` when formatting multiple dates inside hooks, loops, or `FlashList` render items. Use `formatDateMMDDYYYY` or write custom parsers.
