@@ -17,7 +17,7 @@ import Constants from 'expo-constants';
 import { useUser } from '../context/UserContext';
 import { Alert } from 'react-native';
 
-type FilterType = 'Active' | 'Frozen' | 'Finished';
+type FilterType = 'Active' | 'Paused' | 'Finished' | 'Cancelled';
 
 export const RecordsScreen = () => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -30,8 +30,9 @@ export const RecordsScreen = () => {
     const filteredMedications = React.useMemo(() => {
         return medications.filter(med => {
             if (selectedFilter === 'Active') return med.status === 'Active';
-            if (selectedFilter === 'Frozen') return med.status === 'Paused';
-            if (selectedFilter === 'Finished') return med.status === 'Stopped';
+            if (selectedFilter === 'Paused') return med.status === 'Paused';
+            if (selectedFilter === 'Finished') return med.status === 'Finished';
+            if (selectedFilter === 'Cancelled') return med.status === 'Cancelled' || (med.status as any) === 'Stopped'; // fallback for old data
             return false;
         });
     }, [medications, selectedFilter]);
@@ -97,7 +98,7 @@ export const RecordsScreen = () => {
                 {/* Filter Chips */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
-                        {(['Active', 'Frozen', 'Finished'] as const).map((filter) => {
+                        {(['Active', 'Paused', 'Finished', 'Cancelled'] as const).map((filter) => {
                             const isSelected = selectedFilter === filter;
                             return (
                                 <Chip
