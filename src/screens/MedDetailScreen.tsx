@@ -20,11 +20,15 @@ export const MedDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     const medId = initialMedication.id;
 
     const { medication, history, adherencePercentage, takenCount, expectedCount } = useMedicationHistory(medId);
-    const { stopMedication, pauseMedication, resumeMedication } = useMedication();
+    const { stopMedication, finishMedication, pauseMedication, resumeMedication } = useMedication();
     const theme = useTheme();
 
     const handleStop = () => {
         stopMedication(medId);
+    };
+
+    const handleFinish = () => {
+        finishMedication(medId);
     };
 
     const handlePause = (days?: number) => {
@@ -69,6 +73,7 @@ export const MedDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     <ManageIntakeActions
                         medication={medication}
                         onStop={handleStop}
+                        onFinish={handleFinish}
                         onPause={handlePause}
                         onResume={handleResume}
                     />

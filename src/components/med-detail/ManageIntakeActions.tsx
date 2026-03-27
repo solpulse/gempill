@@ -6,11 +6,12 @@ import { Medication } from '../../types/GempillTypes';
 interface ManageIntakeActionsProps {
     medication: Medication;
     onStop: () => void;
+    onFinish: () => void;
     onPause: (days?: number) => void;
     onResume: () => void;
 }
 
-export const ManageIntakeActions: React.FC<ManageIntakeActionsProps> = ({ medication, onStop, onPause, onResume }) => {
+export const ManageIntakeActions: React.FC<ManageIntakeActionsProps> = ({ medication, onStop, onFinish, onPause, onResume }) => {
     const theme = useTheme();
     const [freezeDialogVisible, setFreezeDialogVisible] = useState(false);
     const [freezeType, setFreezeType] = useState<'indefinite' | 'days'>('indefinite');
@@ -37,23 +38,32 @@ export const ManageIntakeActions: React.FC<ManageIntakeActionsProps> = ({ medica
                 <Divider style={{ marginBottom: 16 }} />
 
                 {medication.status === 'Active' ? (
-                    <View style={styles.actionRow}>
-                        <Button
-                            mode="outlined"
-                            icon="snowflake"
-                            onPress={() => setFreezeDialogVisible(true)}
-                            style={{ flex: 1, marginRight: 8 }}
-                        >
-                            Freeze
-                        </Button>
+                    <View style={{ gap: 8 }}>
+                        <View style={styles.actionRow}>
+                            <Button
+                                mode="outlined"
+                                icon="snowflake"
+                                onPress={() => setFreezeDialogVisible(true)}
+                                style={{ flex: 1, marginRight: 8 }}
+                            >
+                                Freeze
+                            </Button>
+                            <Button
+                                mode="contained"
+                                buttonColor={theme.colors.error}
+                                icon="cancel"
+                                onPress={onStop}
+                                style={{ flex: 1, marginLeft: 8 }}
+                            >
+                                Cancel
+                            </Button>
+                        </View>
                         <Button
                             mode="contained"
-                            buttonColor={theme.colors.error}
-                            icon="stop"
-                            onPress={onStop}
-                            style={{ flex: 1, marginLeft: 8 }}
+                            icon="check-all"
+                            onPress={onFinish}
                         >
-                            Stop
+                            Finish
                         </Button>
                     </View>
                 ) : (
@@ -72,7 +82,7 @@ export const ManageIntakeActions: React.FC<ManageIntakeActionsProps> = ({ medica
                                     color: medication.status === 'Paused' ? theme.colors.onSecondaryContainer : theme.colors.onErrorContainer
                                 }}
                             >
-                                {medication.status === 'Paused' ? 'FROZEN / PAUSED' : 'STOPPED'}
+                                {medication.status === 'Paused' ? 'FROZEN / PAUSED' : medication.status.toUpperCase()}
                                 {medication.pausedUntil && ` UNTIL ${new Date(medication.pausedUntil).toLocaleDateString()}`}
                             </Text>
                         </View>

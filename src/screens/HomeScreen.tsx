@@ -86,6 +86,15 @@ export const HomeScreen = () => {
         </>
     ), [theme, userProfile.name, adherence, progressStyle, showConfetti]);
 
+    // Empty state component
+    const ListEmptyComponent = useMemo(() => (
+        <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
+                No doses scheduled for today.
+            </Text>
+        </View>
+    ), [theme.colors.onSurfaceVariant]);
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
             <FlashList
@@ -93,6 +102,8 @@ export const HomeScreen = () => {
                 renderItem={renderItem}
                 keyExtractor={keyExtractor}
                 ListHeaderComponent={ListHeader}
+                ListEmptyComponent={ListEmptyComponent}
+                estimatedItemSize={150} // added required prop for FlashList performance
                 contentContainerStyle={styles.contentContainer}
             />
         </SafeAreaView>
@@ -156,5 +167,15 @@ const styles = StyleSheet.create({
         fontSize: 22,
         fontWeight: 'bold',
         marginBottom: 20,
+    },
+    emptyContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingTop: 40,
+    },
+    emptyText: {
+        fontSize: 16,
+        fontWeight: '500',
     },
 });

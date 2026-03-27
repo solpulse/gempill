@@ -15,6 +15,7 @@ interface MedicationContextType {
     rescheduleDoseGroup: (oldTime: string, newTime: string, isPersistent: boolean) => void;
     rescheduleSingleDose: (doseId: string, newTime: string) => void;
     stopMedication: (id: string) => void;
+    finishMedication: (id: string) => void;
     pauseMedication: (id: string, days?: number) => void;
     resumeMedication: (id: string) => void;
     refreshDosesFromStorage: () => Promise<void>;
@@ -28,8 +29,8 @@ const INITIAL_MEDICATIONS: Medication[] = [];
 const generateDosesForToday = (meds: Medication[]): Dose[] => {
     const todayDoses: Dose[] = [];
     meds.forEach(med => {
-        // Skip if Stopped
-        if (med.status === 'Stopped') return;
+        // Skip if Stopped, Cancelled, or Finished
+        if (med.status === 'Stopped' || med.status === 'Cancelled' || med.status === 'Finished') return;
 
         // Skip if Paused (check date)
         if (med.status === 'Paused') {
@@ -164,6 +165,14 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
                     const oldDoses: Dose[] = JSON.parse(dosesJson);
                     const processedOldDoses = oldDoses.map(dose => {
                         if (dose.status === 'Pending') {
+                            // If it was Pending yesterday, it's Missed now.
+                            // Cancel any pending alarms associated with yesterday's specific schedule.
+                            // (Since IDs are stable per time, Notifee Daily Repeat handles tomorrow, but
+                            // we need to record this in history correctly as Missed).
+
+                            // Let's cancel the alarm to avoid "drift" if we missed it and the medication rules changed.
+                            // It will be correctly rescheduled by generateDosesForToday if still active.
+                            NotificationService.cancelSchedule(dose.medicationId, dose.scheduledTime);
                             return { ...dose, status: 'Missed' as const };
                         }
                         return dose;
@@ -402,12 +411,23 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
     };
 
     const stopMedication = (id: string) => {
-        setMedications(prev => prev.map(med => med.id === id ? { ...med, status: 'Stopped' } : med));
+        setMedications(prev => prev.map(med => med.id === id ? { ...med, status: 'Cancelled' } : med));
 
         // Remove pending doses for today and explicitly cancel their entire matching 14-day schedule blocks
         setDoses(prev => {
             const affectedDoses = prev.filter(dose => dose.id.startsWith(id) && dose.status === 'Pending');
             // Cancel all hardware alarms across the 14 days for these slots
+            affectedDoses.forEach(dose => cancelDoseAlarm(dose));
+
+            return prev.filter(dose => !(dose.id.startsWith(id) && dose.status === 'Pending'));
+        });
+    };
+
+    const finishMedication = (id: string) => {
+        setMedications(prev => prev.map(med => med.id === id ? { ...med, status: 'Finished' } : med));
+
+        setDoses(prev => {
+            const affectedDoses = prev.filter(dose => dose.id.startsWith(id) && dose.status === 'Pending');
             affectedDoses.forEach(dose => cancelDoseAlarm(dose));
 
             return prev.filter(dose => !(dose.id.startsWith(id) && dose.status === 'Pending'));
@@ -481,6 +501,7 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
             rescheduleDoseGroup,
             rescheduleSingleDose,
             stopMedication,
+            finishMedication,
             pauseMedication,
             resumeMedication,
             refreshDosesFromStorage
