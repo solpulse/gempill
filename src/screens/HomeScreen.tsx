@@ -87,7 +87,7 @@ export const HomeScreen = () => {
     ), [theme, userProfile.name, adherence, progressStyle, showConfetti]);
 
     // Empty state component
-    const ListEmptyComponent = useMemo(() => (
+    const ListEmpty = useMemo(() => (
         <View style={styles.emptyContainer}>
             <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
                 No doses scheduled for today.
@@ -102,8 +102,8 @@ export const HomeScreen = () => {
                 renderItem={renderItem}
                 keyExtractor={keyExtractor}
                 ListHeaderComponent={ListHeader}
-                ListEmptyComponent={ListEmptyComponent}
-                estimatedItemSize={150} // added required prop for FlashList performance
+                ListEmptyComponent={ListEmpty}
+                estimatedItemSize={200}
                 contentContainerStyle={styles.contentContainer}
             />
         </SafeAreaView>
