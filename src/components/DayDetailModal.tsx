@@ -4,6 +4,7 @@ import { Text, IconButton, Surface, useTheme } from 'react-native-paper';
 import { Svg, Circle, Text as SvgText } from 'react-native-svg';
 import { DailyLog } from '../utils/mockData';
 import { MedicationIcon } from './MedicationIcon';
+import { format } from 'date-fns';
 import Animated, {
     FadeIn,
     FadeOut,
@@ -74,7 +75,8 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                         {/* Header */}
                         <View style={[styles.header, { borderBottomColor: theme.colors.outlineVariant }]}>
                             <Text variant="titleLarge" style={styles.dateTitle}>
-                                {date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                                {/* ⚡ Bolt: Replaced toLocaleDateString with date-fns format for performance */}
+                                {format(date, 'EEEE, MMMM d')}
                             </Text>
                             <IconButton icon="close" onPress={onDismiss} />
                         </View>
