@@ -14,6 +14,7 @@ import notifee, { EventType } from '@notifee/react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import NotificationService from './src/services/NotificationService';
+import StorageService from './src/services/StorageService';
 import { theme } from './src/theme';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 
@@ -26,6 +27,7 @@ import { NotificationActionModal } from './src/components/NotificationActionModa
 import { PermissionProvider, usePermission } from './src/context/PermissionContext';
 import { UserProvider } from './src/context/UserContext';
 import { isTimePastDue } from './src/utils/TimeUtils';
+import NativeNotificationActions, { NotificationActionEvent } from './src/services/NativeNotificationActions';
 
 // Ensure standard android cleanup
 import * as SystemUI from 'expo-system-ui';
@@ -97,41 +99,61 @@ const NotificationHandlerListener = () => {
 
     checkInitialNotification();
 
-    // 4. Handle Foreground and Background Action events
+    // 4. Handle Foreground notification events
     const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
-      // TRIGGER: When notification is delivered (pops up) OR user taps it
-      if (type === EventType.DELIVERED || type === EventType.PRESS) {
+      // When a notification is DELIVERED, replace its action buttons with our
+      // native BroadcastReceiver-based ones so the drawer stays open
+      if (type === EventType.DELIVERED) {
         const { notification } = detail;
-        if (notification && notification.data && notification.data.scheduledTime) {
-          // Only show modal if it's a generic press, not an action press
-          console.log('[NotificationHandler] Notification delivered/pressed in foreground, showing modal.');
+        if (notification && notification.id && notification.data && notification.data.scheduledTime) {
+          console.log('[NotificationHandler] Notification delivered, replacing actions with broadcast-based ones');
+          
+          // Replace the Notifee notification with our native one
+          NativeNotificationActions.replaceNotificationActions(notification.id, {
+            title: notification.title || 'Medication Reminder',
+            body: notification.body || '',
+            channelId: 'critical-alerts',
+            data: {
+              doseId: (notification.data.doseId as string) || '',
+              medicationId: (notification.data.medicationId as string) || '',
+              scheduledTime: (notification.data.scheduledTime as string) || '',
+              medName: (notification.data.medName as string) || '',
+            },
+            actions: [
+              { title: '✅ Take Pill', id: 'take-pill' },
+              { title: '⏰ +10 Min', id: 'snooze' },
+            ],
+          }).catch((err: Error) => console.error('[NotificationHandler] Failed to replace notification:', err));
+          
+          // Also show the in-app modal
           showNotificationAction(notification.data.scheduledTime as string);
         }
       }
-
-      // HANDLE ACTIONS (Take / Snooze) - Foregound
+      
+      // When user taps the notification body (not action buttons), show modal
+      if (type === EventType.PRESS) {
+        const { notification } = detail;
+        if (notification && notification.data && notification.data.scheduledTime) {
+          console.log('[NotificationHandler] Notification pressed in foreground, showing modal.');
+          showNotificationAction(notification.data.scheduledTime as string);
+        }
+      }
+      
+      // Fallback: still handle Notifee ACTION_PRESS in case our native replacement somehow
+      // didn't work (e.g., timing issue). Uses StorageService to avoid React state re-renders.
       if (type === EventType.ACTION_PRESS && detail.notification && detail.pressAction) {
         const { pressAction, notification } = detail;
-        const { doseId, medicationId, scheduledTime } = notification.data || {};
+        const { doseId } = notification.data || {};
 
         if (pressAction.id === 'take-pill' && doseId) {
-          console.log('[NotificationHandler] Action: Take Pill', doseId);
-          updateDoseStatus(doseId as string, 'Taken');
-          // Cancel the notification
+          console.log('[NotificationHandler] Fallback Notifee Action: Take Pill', doseId);
+          StorageService.updateDoseStatus(doseId as string, 'Taken');
           if (notification.id) {
             notifee.cancelNotification(notification.id);
           }
         } else if (pressAction.id === 'snooze' && doseId) {
-          console.log('[NotificationHandler] Action: Snooze', doseId);
-          // Snooze 10m from NOW
-          const now = new Date();
-          const newTimeDate = new Date(now.getTime() + 10 * 60000); // +10 mins
-          const newTimeStr = `${newTimeDate.getHours().toString().padStart(2, '0')}:${newTimeDate.getMinutes().toString().padStart(2, '0')}`;
-
-          // Reschedule SINGLE dose
-          rescheduleSingleDose(doseId as string, newTimeStr);
-
-          // Cancel the notification
+          console.log('[NotificationHandler] Fallback Notifee Action: Snooze', doseId);
+          StorageService.rescheduleDose(doseId as string, 10);
           if (notification.id) {
             notifee.cancelNotification(notification.id);
           }
@@ -139,26 +161,35 @@ const NotificationHandlerListener = () => {
       }
     });
 
-    // Background Event Handler is typically set up outside of components (in index.js), 
-    // but Notifee allows `onBackgroundEvent` registration.
-    // However, App.tsx component unmounts in background? No, usually stays mounted in memory, 
-    // but Background Events should be registered globally. 
-    // For this task, user asked for "Actions should perform actions". 
-    // If the app is KILLED, we need a background handler in `index.js`.
-    // If the app is BACKGROUNDED, `onForegroundEvent` MIGHT not trigger `ACTION_PRESS` depending on OS.
-    // `notifee.onBackgroundEvent` is the correct way for background/killed state actions.
-    // I should register it OUTSIDE the component or ensuring it handles these.
-    // Given the constraints and current setup, I will register a simple background handler here 
-    // OR just rely on the fact that `onForegroundEvent` catches interactions if the app opens?
-    // "PressAction" with `launchActivity: 'default'` OPENS the app.
-    // So `onForegroundEvent` (or `getInitialNotification` for Cold Start) should catch it if the app opens.
-    // Our NotificationService sets `launchActivity: 'default'`. So the app WILL open.
-    // Therefore `onForegroundEvent` with `EventType.ACTION_PRESS` is the correct place for now.
+    // 5. Listen for action events from our native BroadcastReceiver
+    // These come through when user presses action buttons on the broadcast-based notification
+    const unsubscribeNativeActions = NativeNotificationActions.onAction((event) => {
+      console.log('[NotificationHandler] Native action received:', event.actionId, event.doseId);
+      
+      if (event.actionId === 'take-pill' && event.doseId) {
+        StorageService.updateDoseStatus(event.doseId, 'Taken');
+      } else if (event.actionId === 'snooze' && event.doseId) {
+        StorageService.rescheduleDose(event.doseId, 10);
+      }
+    });
+
+    // 6. Check for pending actions from when app was killed
+    NativeNotificationActions.getPendingAction().then((pendingAction) => {
+      if (pendingAction) {
+        console.log('[NotificationHandler] Processing pending action:', pendingAction.actionId);
+        if (pendingAction.actionId === 'take-pill' && pendingAction.doseId) {
+          StorageService.updateDoseStatus(pendingAction.doseId, 'Taken');
+        } else if (pendingAction.actionId === 'snooze' && pendingAction.doseId) {
+          StorageService.rescheduleDose(pendingAction.doseId, 10);
+        }
+      }
+    });
 
 
     return () => {
       subscription.remove();
       unsubscribe();
+      unsubscribeNativeActions();
     };
   }, [doses, activeTimeGroup, showNotificationAction, ignoredTimes]); // Re-run if doses change
 

@@ -94,14 +94,6 @@ export const HomeScreen = () => {
         </>
     ), [theme, userProfile.name, adherence, progressStyle, showConfetti]);
 
-    // Empty state component
-    const ListEmpty = useMemo(() => (
-        <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
-                No doses scheduled for today.
-            </Text>
-        </View>
-    ), [theme.colors.onSurfaceVariant]);
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>

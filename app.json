@@ -2,7 +2,7 @@
   "expo": {
     "name": "Gempill",
     "slug": "Gempill",
-    "version": "1.0.11",
+    "version": "1.0.20",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -29,7 +29,6 @@
         "android.permission.USE_FULL_SCREEN_INTENT",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.WAKE_LOCK",
-        "android.permission.USE_EXACT_ALARM",
         "android.permission.SYSTEM_ALERT_WINDOW"
       ]
     },

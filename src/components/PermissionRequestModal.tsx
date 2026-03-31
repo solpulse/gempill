@@ -67,7 +67,8 @@ const getBatteryInstructions = (vendor: VendorType): { steps: string[]; note?: s
             return {
                 steps: [
                     'Tap "Open Settings" below',
-                    'Select "Unrestricted" or "Optimized"',
+                    'Tap "Battery"',
+                    'Select "Unrestricted"',
                 ],
                 note: 'One UI: Also remove Gempill from "Sleeping apps" in Device Care',
             };
@@ -75,6 +76,7 @@ const getBatteryInstructions = (vendor: VendorType): { steps: string[]; note?: s
             return {
                 steps: [
                     'Tap "Open Settings" below',
+                    'Tap "Battery saver"',
                     'Select "No restrictions"',
                 ],
                 note: 'MIUI: Also enable "Autostart" in Security app → Permissions',
@@ -83,6 +85,7 @@ const getBatteryInstructions = (vendor: VendorType): { steps: string[]; note?: s
             return {
                 steps: [
                     'Tap "Open Settings" below',
+                    'Tap "Battery"',
                     'Select "Unrestricted"',
                 ],
                 note: 'Also check: Settings → Apps → Special access → Battery optimization',
@@ -91,6 +94,7 @@ const getBatteryInstructions = (vendor: VendorType): { steps: string[]; note?: s
             return {
                 steps: [
                     'Tap "Open Settings" below',
+                    'Tap "App battery usage" or "Battery"',
                     'Select "Unrestricted" or disable optimization',
                 ],
             };

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
-import { Platform, AppState, AppStateStatus, NativeModules } from 'react-native';
+import { Platform, AppState, AppStateStatus, NativeModules, Linking, PermissionsAndroid } from 'react-native';
 import NotificationService from '../services/NotificationService';
 import notifee from '@notifee/react-native';
 
@@ -77,9 +77,19 @@ export const PermissionProvider = ({ children }: { children: ReactNode }) => {
         }
 
         // 1. Check Basic Notification Permission
-        const settings = await notifee.getNotificationSettings();
-        if (settings.authorizationStatus !== 1) { // 1 = AUTHORIZED
-            await notifee.requestPermission();
+        if (Platform.Version >= 33) {
+            const hasPermission = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+            if (!hasPermission) {
+                await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+                // Pause slightly to allow native dialog UI to disperse before next check
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        } else {
+            const settings = await notifee.getNotificationSettings();
+            if (settings.authorizationStatus !== 1) { // 1 = AUTHORIZED
+                await notifee.requestPermission();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
         }
 
         // 2. Check for Exact Alarm Permission (Android 12+)
@@ -126,11 +136,9 @@ export const PermissionProvider = ({ children }: { children: ReactNode }) => {
 
         if (permissionType === 'alarm') {
             await notifee.openAlarmPermissionSettings();
-        } else if (permissionType === 'battery') {
-            await notifee.openBatteryOptimizationSettings();
-        } else if (permissionType === 'vendor') {
-            // For vendor-specific settings, open power manager
-            await notifee.openPowerManagerSettings();
+        } else if (permissionType === 'battery' || permissionType === 'vendor') {
+            // Open App Settings page for battery handling natively instead of global app list
+            await Linking.openSettings();
         }
     };
 

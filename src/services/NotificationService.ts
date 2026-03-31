@@ -117,9 +117,7 @@ class NotificationService {
             timestamp: baseTimestamp,
             repeatFrequency: RepeatFrequency.DAILY,
             alarmManager: {
-                // SET_ALARM_CLOCK is the most aggressive and reliable trigger for apps like this
                 type: AlarmType.SET_ALARM_CLOCK,
-                allowWhileIdle: true,
             },
         };
 
@@ -139,7 +137,7 @@ class NotificationService {
                     smallIcon: 'ic_launcher',
                     color: '#ff0000',
                     importance: AndroidImportance.HIGH,
-                    category: AndroidCategory.ALARM,
+                    category: AndroidCategory.REMINDER,
                     pressAction: {
                         id: 'default',
                         launchActivity: 'default',
@@ -158,10 +156,6 @@ class NotificationService {
                             },
                         },
                     ],
-                    fullScreenAction: {
-                        id: 'default',
-                        launchActivity: 'default',
-                    },
                 },
             },
             trigger,
