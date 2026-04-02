@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Button, Card, Dialog, Divider, Portal, RadioButton, Text, TextInput as PaperInput, useTheme } from 'react-native-paper';
 import { Medication } from '../../types/GempillTypes';
+import { formatDateMMDDYYYY } from '../../utils/TimeUtils';
 
 interface ManageIntakeActionsProps {
     medication: Medication;
@@ -83,7 +84,8 @@ export const ManageIntakeActions: React.FC<ManageIntakeActionsProps> = ({ medica
                                 }}
                             >
                                 {medication.status === 'Paused' ? 'FROZEN / PAUSED' : medication.status.toUpperCase()}
-                                {medication.pausedUntil && ` UNTIL ${new Date(medication.pausedUntil).toLocaleDateString()}`}
+                                {/* ⚡ Bolt: Replaced toLocaleDateString with fast formatter for performance */}
+                                {medication.pausedUntil && ` UNTIL ${formatDateMMDDYYYY(new Date(medication.pausedUntil))}`}
                             </Text>
                         </View>
 
