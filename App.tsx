@@ -33,7 +33,9 @@ import NativeNotificationActions, { NotificationActionEvent } from './src/servic
 import * as SystemUI from 'expo-system-ui';
 import * as NavigationBar from 'expo-navigation-bar';
 
-enableScreens(false);
+// Re-enable screens to use native Fragment/UIViewController optimizations
+// Disabling them causes "ghosting" or flashing during transitions.
+enableScreens(true);
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();

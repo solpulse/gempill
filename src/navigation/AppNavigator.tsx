@@ -7,11 +7,13 @@ import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { useUser } from '../context/UserContext';
 import { View, ActivityIndicator } from 'react-native';
 import { RootStackParamList } from '../types/GempillTypes';
+import { useTheme } from 'react-native-paper';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const AppNavigator = () => {
     const { hasCompletedOnboarding, isLoading } = useUser();
+    const theme = useTheme();
 
     if (isLoading) {
         return (
@@ -26,7 +28,7 @@ export const AppNavigator = () => {
             initialRouteName={hasCompletedOnboarding ? "Main" : "Onboarding"}
             screenOptions={{
                 headerShown: false,
-                contentStyle: { backgroundColor: '#F5F5F5' },
+                contentStyle: { backgroundColor: theme.colors.background }, // Use theme background to avoid flashes
                 animation: 'slide_from_right', // Smooth native slide
                 animationDuration: 300, // Slightly slower for smoother feel
             }}
