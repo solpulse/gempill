@@ -14,8 +14,9 @@ import { useMonthlyRecords } from '../hooks/useMonthlyRecords';
 import { useTheme, Chip } from 'react-native-paper';
 import Constants from 'expo-constants';
 
-import { useUser } from '../context/UserContext';
 import { Alert } from 'react-native';
+import { useUser } from '../context/UserContext';
+import { usePermission } from '../context/PermissionContext';
 
 type FilterType = 'Active' | 'Paused' | 'Finished' | 'Cancelled';
 
@@ -49,20 +50,39 @@ export const RecordsScreen = () => {
         dismissModal
     } = useMonthlyRecords();
 
+    const { checkPermissions } = usePermission();
+
     const handleProfilePress = () => {
         Alert.alert(
-            "Reset App",
-            "Are you sure you want to reset onboarding and clear local data?",
+            "System & Profile",
+            "Select an action to manage your app state or verify system reliability.",
             [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Reset",
-                    style: 'destructive',
+                { 
+                    text: "Check Permissions", 
                     onPress: async () => {
-                        await resetOnboarding();
-                        // Navigation will automatically switch due to validation in AppNavigator
+                        console.log('[Records] Manual permission check triggered');
+                        await checkPermissions();
                     }
-                }
+                },
+                { 
+                    text: "Reset Onboarding", 
+                    style: 'destructive',
+                    onPress: () => {
+                        Alert.alert(
+                            "Confirm Reset",
+                            "This will clear your profile and return to onboarding. Your medications will remain but you'll need to set up your profile again.",
+                            [
+                                { text: "Cancel", style: "cancel" },
+                                { 
+                                    text: "Reset", 
+                                    style: 'destructive', 
+                                    onPress: async () => await resetOnboarding() 
+                                }
+                            ]
+                        );
+                    }
+                },
+                { text: "Dismiss", style: "cancel" }
             ]
         );
     };

@@ -180,7 +180,9 @@ export const PermissionRequestModal: React.FC<PermissionRequestModalProps> = ({
                     </Button>
                 </Dialog.Content>
                 <Dialog.Actions>
-                    <Button onPress={onDismiss} textColor={theme.colors.secondary}>Cancel</Button>
+                    <Button onPress={onDismiss} textColor={theme.colors.secondary}>
+                        {isBattery ? "I'll take the risk" : "Cancel"}
+                    </Button>
                     <Button mode="text" onPress={onOpenSettings}>Open Settings</Button>
                 </Dialog.Actions>
             </Dialog>

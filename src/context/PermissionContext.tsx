@@ -39,14 +39,28 @@ interface PermissionContextType {
     recheckOnResume: () => void;
 }
 
+import AsyncStorage from '@react-native-async-storage/async-storage'; 
+
+const STORAGE_KEY_BATTERY_NAG = '@battery_nag_ignored';
+
 const PermissionContext = createContext<PermissionContextType | undefined>(undefined);
 
 export const PermissionProvider = ({ children }: { children: ReactNode }) => {
     const [modalVisible, setModalVisible] = useState(false);
     const [permissionType, setPermissionType] = useState<PermissionType>('alarm');
     const [vendorType] = useState<VendorType>(getVendorType);
+    const [batteryNagIgnored, setBatteryNagIgnored] = useState(false);
     const appState = useRef(AppState.currentState);
     const pendingCheck = useRef(false);
+
+    useEffect(() => {
+        loadNagStatus();
+    }, []);
+
+    const loadNagStatus = async () => {
+        const ignored = await AsyncStorage.getItem(STORAGE_KEY_BATTERY_NAG);
+        if (ignored === 'true') setBatteryNagIgnored(true);
+    };
 
     // AppState listener to re-check permissions when returning from settings
     useEffect(() => {
@@ -57,10 +71,11 @@ export const PermissionProvider = ({ children }: { children: ReactNode }) => {
                 pendingCheck.current
             ) {
                 // User returned from settings, re-check permissions
+                console.log('[PermissionContext] User returned from settings, triggered re-check');
                 pendingCheck.current = false;
                 setTimeout(() => {
                     checkPermissionsInternal(true);
-                }, 500); // Small delay to ensure settings have been applied
+                }, 800); // Increased delay slightly for better reliability
             }
             appState.current = nextAppState;
         });
@@ -76,54 +91,87 @@ export const PermissionProvider = ({ children }: { children: ReactNode }) => {
             return;
         }
 
-        // 1. Check Basic Notification Permission
+        console.log(`[Permission] Starting check (First Check: ${!isRecheck})`);
+
+        // ---------------------------------------------------------
+        // Step 1: Handle Notification (POST_NOTIFICATIONS) for Android 13+
+        // ---------------------------------------------------------
         if (Platform.Version >= 33) {
-            const hasPermission = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
-            if (!hasPermission) {
-                await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
-                // Pause slightly to allow native dialog UI to disperse before next check
-                await new Promise(resolve => setTimeout(resolve, 1000));
+            let hasNoticePerm = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+            console.log('[Permission] POST_NOTIFICATIONS status:', hasNoticePerm);
+            
+            if (!hasNoticePerm) {
+                const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+                console.log('[Permission] POST_NOTIFICATIONS request result:', result);
+                
+                // If they just granted it, give the system a moment to propagate
+                if (result === 'granted') {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                // We DON'T return here; we want to proceed to check other things 
+                // but we should check if they granted or denied it for logging
             }
         } else {
             const settings = await notifee.getNotificationSettings();
             if (settings.authorizationStatus !== 1) { // 1 = AUTHORIZED
-                await notifee.requestPermission();
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-        }
-
-        // 2. Check for Exact Alarm Permission (Android 12+)
-        if (Platform.Version >= 31) {
-            const updatedSettings = await notifee.getNotificationSettings();
-            if (updatedSettings.android.alarm !== 1) { // 1 = AUTHORIZED
-                if (!isRecheck) {
-                    setPermissionType('alarm');
-                    setModalVisible(true);
-                    return;
+                const result = await notifee.requestPermission();
+                if (result.authorizationStatus === 1) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                 }
-                // On recheck, if still not granted, show modal again
-                // but don't block - continue to battery check
             }
         }
 
-        // 3. Check for Battery Optimization
-        const battery = await notifee.isBatteryOptimizationEnabled();
-        if (battery) {
-            setPermissionType('battery');
-            setModalVisible(true);
-            return;
+        // ---------------------------------------------------------
+        // Step 2: Handle Exact Alarms (Android 12+)
+        // This is where EXEMPTIONS or the manual toggle apply.
+        // ---------------------------------------------------------
+        if (Platform.Version >= 31) {
+            // Sequential Check for Alarms
+            let updatedSettings = await notifee.getNotificationSettings();
+            let alarmStatus = updatedSettings.android?.alarm;
+            console.log('[Permission] Exact alarm status:', alarmStatus);
+            
+            // On some devices, notifee might need a quick retry if checked right after perms
+            if (alarmStatus !== 1) {
+                await new Promise(resolve => setTimeout(resolve, 800));
+                updatedSettings = await notifee.getNotificationSettings();
+                alarmStatus = updatedSettings.android?.alarm;
+                console.log('[Permission] Exact alarm status (after retry):', alarmStatus);
+            }
+
+            if (alarmStatus !== 1) { // 1 = AUTHORIZED
+                console.log('[Permission] Showing Alarm Modal');
+                setPermissionType('alarm');
+                setModalVisible(true);
+                return;
+            }
         }
 
-        // 4. For vendor-specific ROMs (Xiaomi, Samsung), suggest additional settings
-        // Only show vendor instructions on first check, not on resume recheck
-        if (!isRecheck && (vendorType === 'xiaomi' || vendorType === 'samsung')) {
-            // We could show vendor-specific modal here, but it's been moved to
-            // the modal component itself with instructions
+        // ---------------------------------------------------------
+        // Step 3: Handle Battery Optimization (Dose Throttling)
+        // ---------------------------------------------------------
+        if (batteryNagIgnored && !isRecheck) {
+            console.log('[Permission] Skipping battery optimization check (User ignored nag)');
+        } else {
+            const isRestricted = await notifee.isBatteryOptimizationEnabled();
+            console.log('[Permission] Battery optimization RESTRICTED:', isRestricted);
+            
+            if (isRestricted) {
+                setPermissionType('battery');
+                setModalVisible(true);
+                return;
+            }
         }
+
+        console.log('[Permission] All critical permissions are verified.');
     };
 
-    const checkPermissions = async (): Promise<void> => {
-        await checkPermissionsInternal(false);
+    const checkPermissions = async (force: boolean = false): Promise<void> => {
+        if (force) {
+            console.log('[Permission] Manual check triggered, resetting ignore flag temporarily');
+            // We don't change the state permanently, just pass it through the logic
+        }
+        await checkPermissionsInternal(force);
     };
 
     const recheckOnResume = () => {
@@ -142,10 +190,17 @@ export const PermissionProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const handleDismiss = () => {
+    const handleDismiss = async () => {
         setModalVisible(false);
 
-        // Chain to next permission check if they dismissed current one
+        // If user dismisses battery optimization modal, mark it as ignored
+        if (permissionType === 'battery') {
+            console.log('[Permission] User dismissed battery nag, marking as ignored');
+            setBatteryNagIgnored(true);
+            await AsyncStorage.setItem(STORAGE_KEY_BATTERY_NAG, 'true');
+        }
+
+        // Chain to next permission check if they dismissed current one (e.g. they skipped alarm, check battery next)
         if (permissionType === 'alarm') {
             setTimeout(() => {
                 checkBatteryOnly();

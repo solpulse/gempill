@@ -6,11 +6,25 @@ echo "🔨 Starting Local Release Build..."
 # Ensure native project is up to date
 EXPO_NO_TELEMETRY=1 CI=1 npx expo prebuild --platform android --no-install --clean
 
-# FORCE STRIP auto-injected USE_EXACT_ALARM from Manifest to reveal Alarms & Reminders toggle
-if [ -f "android/app/src/main/AndroidManifest.xml" ]; then
-    echo "🧹 Stripping USE_EXACT_ALARM from AndroidManifest.xml..."
+# ============================================================
+# PERMISSION STRATEGY: Exact Alarms (Android 13/14+)
+# ------------------------------------------------------------
+# Option A (PRE-GRANTED): Keep android.permission.USE_EXACT_ALARM.
+#   - Pros: Granted at install. No manual user work. Reliable alarms.
+#   - Cons: Play Store might require a declaration for "Alarm/Reminders" app.
+# Option B (USER-GRANTED): Remove USE_EXACT_ALARM, keep SCHEDULE_EXACT_ALARM.
+#   - Pros: Play Store safe for almost all apps.
+#   - Cons: DISABLED BY DEFAULT on Android 14+. Requires manual user toggle.
+# ============================================================
+STRIP_FOR_PLAYSTORE=false # Set to true to force SCHEDULE_EXACT_ALARM behavior
+
+if [ "$STRIP_FOR_PLAYSTORE" = true ] && [ -f "android/app/src/main/AndroidManifest.xml" ]; then
+    echo "🧹 [STRATEGY: PlayStore] Stripping USE_EXACT_ALARM to force-reveal toggle..."
     sed -i '/android.permission.USE_EXACT_ALARM/d' android/app/src/main/AndroidManifest.xml
+else
+    echo "🚀 [STRATEGY: Reliability] Keeping USE_EXACT_ALARM for pre-granted reliability."
 fi
+# ============================================================
 
 # ============================================================
 # INJECT: Custom BroadcastReceiver for notification actions
@@ -88,7 +102,7 @@ cd ..
 # Extract version from package.json using node
 VERSION=$(node -p "require('./package.json').version")
 OUTPUT_DIR="testbuilds"
-OUTPUT_FILE="$OUTPUT_DIR/gempil_build_v${VERSION}.apk"
+OUTPUT_FILE="$OUTPUT_DIR/gempill_build_v${VERSION}.apk"
 
 # Ensure the testbuilds directory exists
 mkdir -p "$OUTPUT_DIR"

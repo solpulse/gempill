@@ -2,7 +2,7 @@
   "expo": {
     "name": "Gempill",
     "slug": "Gempill",
-    "version": "1.0.20",
+    "version": "1.0.23",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
