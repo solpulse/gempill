@@ -92,6 +92,7 @@ export const AddMedicationScreen: React.FC<Props> = ({ navigation, route }) => {
                             placeholderTextColor={theme.colors.onSurfaceVariant}
                             value={name}
                             onChangeText={setName}
+                            maxLength={100}
                         />
                     </View>
 

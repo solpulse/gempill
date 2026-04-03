@@ -66,6 +66,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
                                     placeholderTextColor={theme.colors.onSurfaceVariant}
                                     value={name}
                                     onChangeText={setName}
+                                    maxLength={50}
                                 />
 
                                 <Text style={[styles.label, { color: theme.colors.onSurface }]}>Age</Text>
@@ -80,6 +81,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
                                     value={age}
                                     onChangeText={setAge}
                                     keyboardType="numeric"
+                                    maxLength={3}
                                 />
 
                                 <Text style={[styles.label, { color: theme.colors.onSurface }]}>Weight</Text>
@@ -94,6 +96,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
                                     value={weight}
                                     onChangeText={setWeight}
                                     keyboardType="numeric"
+                                    maxLength={5}
                                 />
 
                                 <Button

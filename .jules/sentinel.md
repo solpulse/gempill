@@ -1,0 +1,4 @@
+## 2025-02-14 - Add input length validation to TextInputs
+**Vulnerability:** Found missing input length validation on all `TextInput` instances which can lead to large strings being stored, causing UI freezes, memory exhaustion, and potential Denial of Service (DoS) situations when persisting or parsing the data.
+**Learning:** `TextInput` doesn't enforce bounds by default. Forms can unexpectedly accept payloads of Megabytes in size from copy-pastes if not restricted.
+**Prevention:** Always add a reasonable `maxLength` prop to `TextInput` components based on expected input (e.g., 50 for names, 3 for age, 100 for titles).
