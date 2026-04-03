@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NotificationService from './NotificationService';
 import { Dose } from '../types/GempillTypes';
+import { DeviceEventEmitter } from 'react-native';
 
 const STORAGE_KEY_DOSES = '@doses';
 
@@ -37,7 +38,29 @@ class StorageService {
             const doseIndex = doses.findIndex(d => d.id === doseId);
 
             if (doseIndex === -1) {
-                console.log(`[StorageService] Dose ${doseId} not found`);
+                console.log(`[StorageService] Dose ${doseId} not found in doses, checking history`);
+                const historyJson = await AsyncStorage.getItem('@dose_history');
+                if (historyJson) {
+                    let history = JSON.parse(historyJson);
+                    let foundAndUpdated = false;
+                    for (let entry of history) {
+                        const hIndex = entry.doses.findIndex((d: Dose) => d.id === doseId);
+                        if (hIndex !== -1) {
+                            const actionTime = (status === 'Taken' || status === 'Skipped') ? new Date().toISOString() : undefined;
+                            entry.doses[hIndex] = { ...entry.doses[hIndex], status, actionTime };
+                            foundAndUpdated = true;
+                            // Do not reschedule alarm for historical edits to avoid duplicates for today
+                            break;
+                        }
+                    }
+                    if (foundAndUpdated) {
+                        await AsyncStorage.setItem('@dose_history', JSON.stringify(history));
+                        DeviceEventEmitter.emit('historyUpdated');
+                        console.log(`[StorageService] Historical dose ${doseId} updated to ${status}`);
+                        return true;
+                    }
+                }
+                console.log(`[StorageService] Dose ${doseId} not found anywhere`);
                 return false;
             }
 
@@ -55,9 +78,13 @@ class StorageService {
             // Handle notification cancellation and reschedule for tomorrow!
             if (status === 'Taken' || status === 'Skipped') {
                 const dose = doses[doseIndex];
+                
+                // Cancel today's alarm based on its current mutated schedule (might be snoozed)
                 await NotificationService.cancelTodayAlarm(dose.medicationId, dose.scheduledTime);
 
-                const timeParts = dose.scheduledTime.split(':').map(Number);
+                // Restore the original scheduled time so tomorrow it rings correctly
+                const correctTimeStr = dose.originalScheduledTime || dose.scheduledTime;
+                const timeParts = correctTimeStr.split(':').map(Number);
                 const tomorrow = new Date();
                 tomorrow.setDate(tomorrow.getDate() + 1);
                 tomorrow.setHours(timeParts[0], timeParts[1], 0, 0);
@@ -68,7 +95,7 @@ class StorageService {
                     `Time to take ${dose.frequency}`,
                     dose.medicationId,
                     dose.id,
-                    dose.scheduledTime
+                    correctTimeStr
                 );
             }
 
@@ -119,7 +146,10 @@ class StorageService {
             // Save to storage
             await AsyncStorage.setItem(STORAGE_KEY_DOSES, JSON.stringify(doses));
 
-            // Schedule a new notification
+            // Cancel the previous alarm before scheduling the snooze, so we don't end up with both
+            await NotificationService.cancelTodayAlarm(dose.medicationId, dose.scheduledTime);
+
+            // Schedule a new notification for the snoozed time.
             const newTimestamp = newTimeDate.getTime();
             await NotificationService.scheduleNaggingAlarm(
                 newTimestamp,

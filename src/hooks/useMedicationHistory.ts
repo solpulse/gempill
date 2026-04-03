@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useMedication } from '../context/MedicationContext';
+import { DeviceEventEmitter } from 'react-native';
 import { Medication, Dose } from '../types/GempillTypes';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -33,6 +34,11 @@ export const useMedicationHistory = (medId: string) => {
             }
         };
         loadHistory();
+
+        const subscription = DeviceEventEmitter.addListener('historyUpdated', loadHistory);
+        return () => {
+            subscription.remove();
+        };
     }, []);
 
     // Generate history from archived data + live data for today
@@ -43,7 +49,7 @@ export const useMedicationHistory = (medId: string) => {
         const todayStr = `${now.getMonth() + 1}/${now.getDate()}/${now.getFullYear()}`;
 
         // 1. Get historical logs from archived doses
-        let medLogs: { date: string; time: string; status: string; rawDate: Date }[] = [];
+        let medLogs: { doseId?: string; date: string; time: string; status: string; rawDate: Date }[] = [];
 
         // Cache for parsed time strings to avoid repeated splitting
         const timeCache: Record<string, [number, number]> = {};
@@ -77,6 +83,7 @@ export const useMedicationHistory = (medId: string) => {
                     }
 
                     medLogs.push({
+                        doseId: dose.id,
                         date: entryDateStr,
                         time: displayTime,
                         status: dose.status,
@@ -115,6 +122,7 @@ export const useMedicationHistory = (medId: string) => {
                 }
 
                 return {
+                    doseId: dose.id,
                     date: todayStr,
                     time: displayTime,
                     status: dose.status,

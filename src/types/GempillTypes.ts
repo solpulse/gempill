@@ -24,6 +24,7 @@ export interface Dose extends Omit<Medication, 'status'> {
 }
 
 export interface MedicationHistoryItem {
+    doseId?: string;
     date: string;
     time: string;
     status: string;

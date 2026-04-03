@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, DeviceEventEmitter } from 'react-native';
 import { Medication, Dose, MedicationStatus } from '../types/GempillTypes';
 import NotificationService from '../services/NotificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,8 +29,8 @@ const INITIAL_MEDICATIONS: Medication[] = [];
 const generateDosesForToday = (meds: Medication[]): Dose[] => {
     const todayDoses: Dose[] = [];
     meds.forEach(med => {
-        // Skip if Stopped, Cancelled, or Finished
-        if (med.status === 'Stopped' || med.status === 'Cancelled' || med.status === 'Finished') return;
+        // Skip if Cancelled, or Finished
+        if (med.status === 'Cancelled' || med.status === 'Finished') return;
 
         // Skip if Paused (check date)
         if (med.status === 'Paused') {
@@ -82,20 +82,17 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
             if (dose.status === 'Pending') {
                 const timestamp = getTimestampForTime(dose.scheduledTime);
 
-                // Only schedule if time is in the future
-                if (timestamp > Date.now()) {
-                    console.log(`[MedicationContext] Scheduling alarm for ${dose.name} at ${dose.scheduledTime}`);
-                    NotificationService.scheduleNaggingAlarm(
-                        timestamp,
-                        dose.name,
-                        `Time to take ${dose.frequency}`,
-                        dose.medicationId,
-                        dose.id,
-                        dose.scheduledTime
-                    );
-                } else {
-                    console.log(`[MedicationContext] Skipping past time alarm for ${dose.name} at ${dose.scheduledTime}`);
-                }
+                // Always schedule it. `scheduleNaggingAlarm` will automatically bump the timestamp
+                // to tomorrow if it has already passed today.
+                console.log(`[MedicationContext] Ensuring alarm schedule for ${dose.name} at ${dose.scheduledTime}`);
+                NotificationService.scheduleNaggingAlarm(
+                    timestamp,
+                    dose.name,
+                    `Time to take ${dose.frequency}`,
+                    dose.medicationId,
+                    dose.id,
+                    dose.scheduledTime
+                );
             }
         });
     };
@@ -330,23 +327,66 @@ export const MedicationProvider: React.FC<{ children: ReactNode }> = ({ children
         }));
     };
 
-    const updateDoseStatus = (doseId: string, status: Dose['status']) => {
-        setDoses(prev => prev.map(dose => {
-            if (dose.id === doseId) {
-                // If status is changing to Taken or Skipped, cancel today's alarm so it doesn't ring later
-                if (status === 'Taken' || status === 'Skipped') {
-                    NotificationService.cancelTodayAlarm(dose.medicationId, dose.scheduledTime);
+    const updateDoseStatus = async (doseId: string, status: Dose['status']) => {
+        const isCurrent = doses.some(d => d.id === doseId);
+
+        if (isCurrent) {
+            setDoses(prev => prev.map(dose => {
+                if (dose.id === doseId) {
+                    if (status === 'Taken' || status === 'Skipped') {
+                        // Cancel today's alarm based on its current mutated schedule (might be snoozed)
+                        NotificationService.cancelTodayAlarm(dose.medicationId, dose.scheduledTime);
+
+                        // Reschedule the correct original time for tomorrow so the loop continues
+                        const correctTimeStr = dose.originalScheduledTime || dose.scheduledTime;
+                        const timeParts = correctTimeStr.split(':').map(Number);
+                        const tomorrow = new Date();
+                        tomorrow.setDate(tomorrow.getDate() + 1);
+                        tomorrow.setHours(timeParts[0], timeParts[1], 0, 0);
+
+                        NotificationService.scheduleNaggingAlarm(
+                            tomorrow.getTime(),
+                            dose.name,
+                            `Time to take ${dose.frequency}`,
+                            dose.medicationId,
+                            dose.id,
+                            correctTimeStr
+                        );
+                    }
+
+                    const actionTime = (status === 'Taken' || status === 'Skipped') ? new Date().toISOString() : undefined;
+
+                    return { ...dose, status, actionTime };
                 }
-                // If status is changing BACK to Pending (undo?), reschedule?
-                // For simplicity, let's assume we might need this if we implement undo.
-                // But for now, just cancel.
+                return dose;
+            }));
+        } else {
+            // Check history
+            try {
+                const historyJson = await AsyncStorage.getItem(STORAGE_KEY_DOSE_HISTORY);
+                if (historyJson) {
+                    let history = JSON.parse(historyJson);
+                    let historyUpdated = false;
 
-                const actionTime = (status === 'Taken' || status === 'Skipped') ? new Date().toISOString() : undefined;
+                    for (let entry of history) {
+                        const hIndex = entry.doses.findIndex((d: any) => d.id === doseId);
+                        if (hIndex !== -1) {
+                            const actionTime = (status === 'Taken' || status === 'Skipped') ? new Date().toISOString() : undefined;
+                            entry.doses[hIndex] = { ...entry.doses[hIndex], status, actionTime };
+                            historyUpdated = true;
+                            break;
+                        }
+                    }
 
-                return { ...dose, status, actionTime };
+                    if (historyUpdated) {
+                        await AsyncStorage.setItem(STORAGE_KEY_DOSE_HISTORY, JSON.stringify(history));
+                        DeviceEventEmitter.emit('historyUpdated');
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to update historical dose', e);
             }
-            return dose;
-        }));
+        }
     };
 
     const rescheduleDoseGroup = (oldTime: string, newTime: string, isPersistent: boolean) => {

@@ -4,6 +4,8 @@ import { Text, IconButton, Surface, useTheme } from 'react-native-paper';
 import { Svg, Circle, Text as SvgText } from 'react-native-svg';
 import { DailyLog } from '../utils/mockData';
 import { MedicationIcon } from './MedicationIcon';
+import { useMedication } from '../context/MedicationContext';
+import { Alert } from 'react-native';
 import Animated, {
     FadeIn,
     FadeOut,
@@ -30,6 +32,22 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
     logs
 }) => {
     const theme = useTheme();
+    const { updateDoseStatus } = useMedication();
+
+    const handleLogPress = (doseId: string | undefined) => {
+        if (!doseId) return;
+        Alert.alert(
+            "Update Dose Status",
+            "Select new status:",
+            [
+                { text: "Taken", onPress: () => updateDoseStatus(doseId, 'Taken') },
+                { text: "Skipped", onPress: () => updateDoseStatus(doseId, 'Skipped') },
+                { text: "Missed", onPress: () => updateDoseStatus(doseId, 'Missed') },
+                { text: "Pending", onPress: () => updateDoseStatus(doseId, 'Pending') },
+                { text: "Cancel", style: "cancel" }
+            ]
+        );
+    };
 
     // Progress Ring Configuration
     const size = 120;
@@ -138,8 +156,9 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                                         }
 
                                         return (
-                                            <Animated.View
+                                            <AnimatedPressable
                                                 key={index}
+                                                onPress={() => handleLogPress(log.doseId)}
                                                 entering={FadeIn.delay(index * 50).duration(200)}
                                                 style={[styles.logItem, { backgroundColor: theme.colors.surface }]}
                                             >
@@ -155,7 +174,7 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({
                                                         {log.status}
                                                     </Text>
                                                 </View>
-                                            </Animated.View>
+                                            </AnimatedPressable>
                                         );
                                     })
                                 ) : (

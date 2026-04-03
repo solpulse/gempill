@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useMedication } from '../context/MedicationContext';
+import { DeviceEventEmitter } from 'react-native';
 import { DayData, DailyLog } from '../utils/mockData';
 import { Dose } from '../types/GempillTypes';
 import { useTheme } from 'react-native-paper';
@@ -36,6 +37,11 @@ export const useMonthlyRecords = () => {
             }
         };
         loadHistory();
+
+        const subscription = DeviceEventEmitter.addListener('historyUpdated', loadHistory);
+        return () => {
+            subscription.remove();
+        };
     }, []);
 
     // Generate calendar data for the current month
@@ -75,6 +81,7 @@ export const useMonthlyRecords = () => {
 
             // Map doses to logs
             const logs: DailyLog[] = dayDoses.map(dose => ({
+                doseId: dose.id,
                 time: formatTimeForDisplay(dose.scheduledTime),
                 medName: dose.name,
                 status: dose.status,

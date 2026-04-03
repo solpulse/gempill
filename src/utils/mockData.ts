@@ -1,6 +1,7 @@
 import { startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isFuture, format } from 'date-fns';
 
 export interface DailyLog {
+    doseId?: string;
     medName: string;
     time: string;
     status: 'Taken' | 'Missed' | 'Skipped' | 'Pending';

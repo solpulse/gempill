@@ -2,6 +2,8 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Card, Chip, Divider, Text, useTheme } from 'react-native-paper';
 import { MedicationHistoryItem } from '../../types/GempillTypes';
+import { useMedication } from '../../context/MedicationContext';
+import { Alert, TouchableOpacity } from 'react-native';
 
 interface IntakeHistoryListProps {
     history: MedicationHistoryItem[];
@@ -9,6 +11,22 @@ interface IntakeHistoryListProps {
 
 export const IntakeHistoryList: React.FC<IntakeHistoryListProps> = ({ history }) => {
     const theme = useTheme();
+    const { updateDoseStatus } = useMedication();
+
+    const handleLogPress = (doseId: string | undefined) => {
+        if (!doseId) return;
+        Alert.alert(
+            "Update Dose Status",
+            "Select new status:",
+            [
+                { text: "Taken", onPress: () => updateDoseStatus(doseId, 'Taken') },
+                { text: "Skipped", onPress: () => updateDoseStatus(doseId, 'Skipped') },
+                { text: "Missed", onPress: () => updateDoseStatus(doseId, 'Missed') },
+                { text: "Pending", onPress: () => updateDoseStatus(doseId, 'Pending') },
+                { text: "Cancel", style: "cancel" }
+            ]
+        );
+    };
 
     return (
         <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
@@ -21,7 +39,7 @@ export const IntakeHistoryList: React.FC<IntakeHistoryListProps> = ({ history })
                 {history.length > 0 ? (
                     history.map((item, index) => (
                         <View key={index}>
-                            <View style={styles.historyRow}>
+                            <TouchableOpacity onPress={() => handleLogPress(item.doseId)} style={styles.historyRow}>
                                 <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
                                     {item.date} at {item.time}
                                 </Text>
@@ -40,7 +58,7 @@ export const IntakeHistoryList: React.FC<IntakeHistoryListProps> = ({ history })
                                 >
                                     {item.status.toUpperCase()}
                                 </Chip>
-                            </View>
+                            </TouchableOpacity>
                             {index < history.length - 1 && <Divider />}
                         </View>
                     ))
