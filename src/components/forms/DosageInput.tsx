@@ -42,6 +42,7 @@ export const DosageInput: React.FC<DosageInputProps> = ({
                     value={dosage}
                     onChangeText={setDosage}
                     keyboardType="numeric"
+                    maxLength={10}
                 />
             </View>
             <View style={[styles.inputGroup, { flex: 1 }]}>
