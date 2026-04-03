@@ -124,6 +124,7 @@ export const ManageIntakeActions: React.FC<ManageIntakeActionsProps> = ({ medica
                                     value={freezeDays}
                                     onChangeText={setFreezeDays}
                                     keyboardType="numeric"
+                                    maxLength={3}
                                     style={{ marginTop: 8 }}
                                 />
                             )}
