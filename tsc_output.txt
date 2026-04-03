@@ -1,0 +1,25 @@
+src/screens/HomeScreen.tsx(106,17): error TS2322: Type '{ data: TimeGroupData[]; renderItem: ({ item }: { item: TimeGroupData; }) => Element; keyExtractor: (item: TimeGroupData) => string; ListHeaderComponent: Element; ListEmptyComponent: Element; estimatedItemSize: number; contentContainerStyle: { ...; }; }' is not assignable to type 'IntrinsicAttributes & FlashListProps<TimeGroupData> & { ref?: Ref<FlashListRef<TimeGroupData>> | undefined; }'.
+  Property 'estimatedItemSize' does not exist on type 'IntrinsicAttributes & FlashListProps<TimeGroupData> & { ref?: Ref<FlashListRef<TimeGroupData>> | undefined; }'.
+src/utils/__tests__/TimeUtils.test.ts(3,1): error TS2582: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/utils/__tests__/TimeUtils.test.ts(8,5): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/utils/__tests__/TimeUtils.test.ts(9,9): error TS2304: Cannot find name 'expect'.
+src/utils/__tests__/TimeUtils.test.ts(10,9): error TS2304: Cannot find name 'expect'.
+src/utils/__tests__/TimeUtils.test.ts(13,5): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/utils/__tests__/TimeUtils.test.ts(14,9): error TS2304: Cannot find name 'expect'.
+src/utils/__tests__/TimeUtils.test.ts(15,9): error TS2304: Cannot find name 'expect'.
+src/utils/__tests__/TimeUtils.test.ts(18,5): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/utils/__tests__/TimeUtils.test.ts(19,9): error TS2304: Cannot find name 'expect'.
+src/utils/__tests__/TimeUtils.test.ts(20,9): error TS2304: Cannot find name 'expect'.
+src/utils/__tests__/TimeUtils.test.ts(23,5): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/utils/__tests__/TimeUtils.test.ts(24,9): error TS2304: Cannot find name 'expect'.
+src/utils/__tests__/TimeUtils.test.ts(25,9): error TS2304: Cannot find name 'expect'.
+src/utils/__tests__/TimeUtils.test.ts(26,9): error TS2304: Cannot find name 'expect'.
+src/utils/__tests__/TimeUtils.test.ts(29,5): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/utils/__tests__/TimeUtils.test.ts(30,9): error TS2304: Cannot find name 'expect'.
+src/utils/__tests__/TimeUtils.test.ts(31,9): error TS2304: Cannot find name 'expect'.
+src/utils/__tests__/TimeUtils.test.ts(34,5): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/utils/__tests__/TimeUtils.test.ts(35,9): error TS2304: Cannot find name 'expect'.
+src/utils/__tests__/TimeUtils.test.ts(36,9): error TS2304: Cannot find name 'expect'.
+src/utils/__tests__/TimeUtils.test.ts(37,9): error TS2304: Cannot find name 'expect'.
+src/utils/__tests__/TimeUtils.test.ts(40,5): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/utils/__tests__/TimeUtils.test.ts(43,9): error TS2304: Cannot find name 'expect'.
