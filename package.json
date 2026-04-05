@@ -42,9 +42,13 @@
     "react-native-worklets": "0.5.1"
   },
   "devDependencies": {
+    "@babel/preset-typescript": "^7.28.5",
     "@react-native-community/cli": "^20.1.2",
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.1.0",
     "babel-preset-expo": "^54.0.8",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.9",
     "typescript": "~5.9.2"
   },
   "private": true
