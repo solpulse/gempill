@@ -1,0 +1,3 @@
+## 2025-02-18 - Improve Form Validation and Accessibility Labels
+**Learning:** Found that form validation was relying solely on changing the border color of inputs to indicate an error state, which is an accessibility issue. Additionally, icon-only buttons (like the close and delete buttons) were lacking screen reader labels.
+**Action:** Always provide explicit inline text feedback for error states and add `accessibilityRole="button"` and `accessibilityLabel` to all interactive icon-only elements so that their function is apparent to assistive technologies.

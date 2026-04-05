@@ -29,7 +29,9 @@ export const DosageInput: React.FC<DosageInputProps> = ({
     return (
         <View style={styles.row}>
             <View style={[styles.inputGroup, { flex: 1, marginRight: 16 }]}>
-                <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Dosage Amount</Text>
+                <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>
+                    Dosage Amount <Text style={{ color: theme.colors.error }}>*</Text>
+                </Text>
                 <TextInput
                     style={[styles.input, {
                         backgroundColor: theme.colors.surface,
@@ -42,7 +44,13 @@ export const DosageInput: React.FC<DosageInputProps> = ({
                     value={dosage}
                     onChangeText={setDosage}
                     keyboardType="numeric"
+                    maxLength={10}
                 />
+                {error && (
+                    <Text style={[styles.errorText, { color: theme.colors.error }]}>
+                        Required
+                    </Text>
+                )}
             </View>
             <View style={[styles.inputGroup, { flex: 1 }]}>
                 <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Dosage Unit</Text>
@@ -112,5 +120,10 @@ const styles = StyleSheet.create({
     },
     inputText: {
         fontSize: 16,
+    },
+    errorText: {
+        fontSize: 12,
+        marginTop: 4,
+        marginLeft: 4,
     },
 });
