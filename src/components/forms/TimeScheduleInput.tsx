@@ -42,6 +42,8 @@ export const TimeScheduleInput: React.FC<TimeScheduleInputProps> = ({
                         <TouchableOpacity
                             style={[styles.deleteButton, { backgroundColor: theme.colors.errorContainer }]}
                             onPress={() => onRemoveSlot(index)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Delete time slot"
                         >
                             <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
                         </TouchableOpacity>
