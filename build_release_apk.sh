@@ -1,7 +1,19 @@
 #!/bin/bash
 set -e
 
+# Setup Output and Logging
+OUTPUT_DIR="testbuilds"
+LOG_DIR="$OUTPUT_DIR/logs"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/build_$(date +%Y%m%d_%H%M%S).log"
+
+# Redirect all output to log file and terminal
+echo "📝 Build logs: $LOG_FILE"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
 echo "🔨 Starting Local Release Build..."
+echo "🕒 Timestamp: $(date)"
+echo "------------------------------------------------------------"
 
 # Ensure native project is up to date
 EXPO_NO_TELEMETRY=1 CI=1 npx expo prebuild --platform android --no-install --clean
@@ -99,12 +111,11 @@ chmod +x gradlew
 
 cd ..
 
-# Extract version from package.json using node
+# 4. Packaging
 VERSION=$(node -p "require('./package.json').version")
-OUTPUT_DIR="testbuilds"
 OUTPUT_FILE="$OUTPUT_DIR/gempill_build_v${VERSION}.apk"
 
-# Ensure the testbuilds directory exists
+# Ensure the output directory exists (already done above but good for safety)
 mkdir -p "$OUTPUT_DIR"
 
 # Copy the built APK to the testbuilds directory with the new name
