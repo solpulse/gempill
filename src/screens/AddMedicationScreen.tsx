@@ -68,11 +68,11 @@ export const AddMedicationScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
             <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
                 <View style={[styles.header, { borderBottomColor: theme.colors.outlineVariant, backgroundColor: theme.colors.background }]}>
-                    <TouchableOpacity onPress={() => navigation.goBack()}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Close">
                         <Ionicons name="close" size={24} color={theme.colors.onSurface} />
                     </TouchableOpacity>
                     <Text style={[styles.headerTitle, { color: theme.colors.onSurface }]}>{isEditing ? 'Edit Medication' : 'Add Medication'}</Text>
-                    <TouchableOpacity onPress={handleSave}>
+                    <TouchableOpacity onPress={handleSave} accessibilityRole="button" accessibilityLabel={isEditing ? 'Save' : 'Add'}>
                         <Text style={[styles.saveButtonText, { color: theme.colors.primary }]}>{isEditing ? 'Save' : 'Add'}</Text>
                     </TouchableOpacity>
                 </View>
@@ -80,7 +80,9 @@ export const AddMedicationScreen: React.FC<Props> = ({ navigation, route }) => {
 
                     {/* Medication Name */}
                     <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Medication Name/Supplement</Text>
+                        <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>
+                            Medication Name/Supplement <Text style={{ color: theme.colors.error }}>*</Text>
+                        </Text>
                         <TextInput
                             style={[styles.input, {
                                 backgroundColor: theme.colors.surface,
@@ -92,7 +94,13 @@ export const AddMedicationScreen: React.FC<Props> = ({ navigation, route }) => {
                             placeholderTextColor={theme.colors.onSurfaceVariant}
                             value={name}
                             onChangeText={setName}
+                            maxLength={100}
                         />
+                        {errors.name && (
+                            <Text style={[styles.errorText, { color: theme.colors.error }]}>
+                                Medication name is required
+                            </Text>
+                        )}
                     </View>
 
                     {/* Dosage Component */}
@@ -245,5 +253,10 @@ const styles = StyleSheet.create({
     footerSaveButtonText: {
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    errorText: {
+        fontSize: 12,
+        marginTop: 4,
+        marginLeft: 4,
     },
 });
