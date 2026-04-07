@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Card, Text, useTheme } from 'react-native-paper';
+import { View, StyleSheet, Platform } from 'react-native';
+import { Card, Text as PaperText, useTheme } from 'react-native-paper';
 import { MedicationIcon } from '../MedicationIcon';
 import { Medication } from '../../types/GempillTypes';
 
@@ -12,26 +12,28 @@ export const MedicationInfoCard: React.FC<MedicationInfoCardProps> = ({ medicati
     const theme = useTheme();
 
     return (
-        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}>
+        <Card style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]} mode="contained">
             <Card.Content style={styles.medInfoContent}>
                 <View style={styles.medInfoRow}>
-                    <View style={[styles.accentBar, { backgroundColor: medication.color || theme.colors.primary }]} />
                     <View style={styles.medInfoText}>
-                        <Text variant="headlineMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurfaceVariant }}>
+                        <PaperText 
+                            variant="headlineSmall" 
+                            style={[styles.nameText, { color: theme.colors.primary, fontFamily: Platform.OS === 'ios' ? 'System' : 'serif' }]}
+                        >
                             {medication.name}
-                        </Text>
-                        <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
-                            Dosage: {medication.dosage} {medication.dosageUnit}
-                        </Text>
-                        <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
-                            Times: {medication.scheduledTimes.join(', ')}
-                        </Text>
+                        </PaperText>
+                        <PaperText variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, fontWeight: '600' }}>
+                            {medication.dosage} {medication.dosageUnit}
+                        </PaperText>
+                        <PaperText variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
+                            Scheduled at {medication.scheduledTimes.join(', ')}
+                        </PaperText>
                     </View>
                     <View style={[styles.iconContainer, { backgroundColor: theme.colors.surface }]}>
                         <MedicationIcon
                             name={medication.icon || "medical-bag"}
                             size={32}
-                            color={theme.colors.onSurface}
+                            color={theme.colors.primary}
                         />
                     </View>
                 </View>
@@ -42,31 +44,24 @@ export const MedicationInfoCard: React.FC<MedicationInfoCardProps> = ({ medicati
 
 const styles = StyleSheet.create({
     card: {
-        marginBottom: 16,
-        borderRadius: 24,
+        marginBottom: 24,
+        borderRadius: 32, // theme.roundness.lg
     },
     medInfoContent: {
-        paddingHorizontal: 0,
-        paddingVertical: 0,
+        padding: 24,
     },
     medInfoRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingRight: 16,
-        paddingVertical: 16,
-    },
-    accentBar: {
-        width: 8,
-        height: '100%',
-        borderTopRightRadius: 4,
-        borderBottomRightRadius: 4,
-        marginRight: 16,
     },
     medInfoText: {
         flex: 1,
     },
+    nameText: {
+        marginBottom: 4,
+    },
     iconContainer: {
-        padding: 12,
-        borderRadius: 16,
+        padding: 16,
+        borderRadius: 16, // Squircle
     },
 });

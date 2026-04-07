@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { HomeScreen } from '../screens/HomeScreen';
@@ -18,6 +19,9 @@ export const TabNavigator = () => {
                     backgroundColor: theme.colors.surface,
                     borderTopWidth: 0,
                     elevation: 0,
+                    height: Platform.OS === 'ios' ? 88 : 64,
+                    paddingBottom: Platform.OS === 'ios' ? 32 : 12,
+                    paddingTop: 8,
                 },
                 tabBarActiveTintColor: theme.colors.primary,
                 tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
@@ -30,23 +34,26 @@ export const TabNavigator = () => {
                         iconName = focused ? 'stats-chart' : 'stats-chart-outline';
                     }
 
-                    return <Ionicons name={iconName as any} size={size} color={color} />;
+                    return <Ionicons name={iconName as any} size={24} color={color} />;
                 },
                 tabBarLabelStyle: {
-                    fontSize: 12,
-                    fontWeight: '500',
+                    fontFamily: 'System', // Manrope placeholder
+                    fontSize: 11,
+                    fontWeight: '700',
+                    letterSpacing: 0.5,
+                    textTransform: 'uppercase',
                 },
             })}
         >
             <Tab.Screen
                 name="HomeTab"
                 component={HomeScreen}
-                options={{ title: 'Home' }}
+                options={{ title: 'Protocol' }}
             />
             <Tab.Screen
                 name="RecordsTab"
                 component={RecordsScreen}
-                options={{ title: 'Records' }}
+                options={{ title: 'Archives' }}
             />
         </Tab.Navigator>
     );

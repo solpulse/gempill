@@ -1,5 +1,5 @@
 import React, { useCallback, memo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Dose } from '../types/GempillTypes';
 import { PillEntry } from './PillEntry';
 import { Modal, Portal, Text as PaperText, Button, Switch, useTheme } from 'react-native-paper';
@@ -44,28 +44,18 @@ const TimeGroupCardComponent: React.FC<TimeGroupCardProps> = ({
     const [initialMinutes, setInitialMinutes] = React.useState(0);
     const [focused, setFocused] = React.useState<'hours' | 'minutes'>('hours');
 
-    // Check if any dose in this group has been rescheduled (has originalScheduledTime)
-    // We assume if one is rescheduled, the whole group for this time slot is.
     const originalTime = doses[0]?.originalScheduledTime;
-
-    // Check if all doses are taken or skipped
     const isCompleted = doses.every(d => d.status === 'Taken' || d.status === 'Skipped');
-
-    // If completed and was rescheduled, show the original time. Otherwise show current scheduled time.
     const displayTime = (isCompleted && originalTime) ? originalTime : time;
-
-    // Only show strike-through original time if NOT completed and it was rescheduled
     const showOriginalTime = !isCompleted && originalTime && originalTime !== time;
 
     const handleApplyOffset = useCallback((offsetMinutes: number) => {
         let newMinutes = initialMinutes + offsetMinutes;
         let newHours = initialHours;
-
         while (newMinutes >= 60) {
             newMinutes -= 60;
             newHours = (newHours + 1) % 24;
         }
-
         setMinutes(newMinutes);
         setHours(newHours);
     }, [initialHours, initialMinutes]);
@@ -86,29 +76,42 @@ const TimeGroupCardComponent: React.FC<TimeGroupCardProps> = ({
     const onConfirm = () => {
         setShowSuccess(true);
         const newTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-
-        // Wait for animation (1.5s) + settle time (0.75s) = 2.25s
         setTimeout(() => {
             rescheduleDoseGroup(time, newTime, isPersistent);
             setVisible(false);
-        }, 2250);
+        }, 1500);
     };
 
     return (
         <View style={styles.container}>
             <TouchableOpacity onPress={onOpen} style={styles.headerRow} disabled={isCompleted}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={[styles.groupName, { color: theme.colors.onSurface }]}>{displayTime}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                    <PaperText variant="headlineSmall" style={[styles.groupName, { color: theme.colors.primary, fontFamily: Platform.OS === 'ios' ? 'System' : 'serif' }]}>
+                        {displayTime}
+                    </PaperText>
                     {showOriginalTime && (
-                        <Text style={[styles.originalTime, { textDecorationLine: 'line-through', color: theme.colors.onSurfaceVariant }]}>
+                        <PaperText variant="bodySmall" style={[styles.originalTime, { textDecorationLine: 'line-through', color: theme.colors.onSurfaceVariant, fontStyle: 'italic' }]}>
                             {originalTime}
-                        </Text>
+                        </PaperText>
                     )}
                 </View>
                 {!isCompleted && (
-                    <MaterialCommunityIcons name="clock-edit-outline" size={24} color={theme.colors.primary} />
+                    <MaterialCommunityIcons name="pencil-outline" size={20} color={theme.colors.outline} />
                 )}
             </TouchableOpacity>
+
+            <View style={[styles.cardContainer, { backgroundColor: theme.colors.outlineVariant }]}>
+                {doses.map((dose, index) => (
+                    <View key={dose.id} style={index > 0 ? { marginTop: 12 } : {}}>
+                        <PillEntry
+                            dose={dose}
+                            onTake={onTake}
+                            onSkip={onSkip}
+                            onPending={onPending}
+                        />
+                    </View>
+                ))}
+            </View>
 
             <Portal>
                 <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={[styles.modalContainer, { backgroundColor: theme.colors.surface }]}>
@@ -119,9 +122,9 @@ const TimeGroupCardComponent: React.FC<TimeGroupCardProps> = ({
                             </Animated.View>
                         ) : (
                             <View key="form">
-                                <PaperText variant="headlineSmall" style={{ marginBottom: 16, textAlign: 'center' }}>Reschedule Intake</PaperText>
+                                <PaperText variant="headlineSmall" style={[styles.modalTitle, { color: theme.colors.primary, fontFamily: Platform.OS === 'ios' ? 'System' : 'serif' }]}>Adjust Calibration</PaperText>
 
-                                <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                                <View style={{ alignItems: 'center', marginBottom: 24 }}>
                                     <TimePicker
                                         hours={hours}
                                         minutes={minutes}
@@ -130,7 +133,6 @@ const TimeGroupCardComponent: React.FC<TimeGroupCardProps> = ({
                                         inputType="picker"
                                         use24HourClock={is24Hour}
                                         onChange={({ hours: newHours, minutes: newMinutes }) => {
-                                            // Auto-switch to minutes after hour selection
                                             if (focused === 'hours' && newHours !== hours) {
                                                 setHours(newHours);
                                                 setMinutes(newMinutes);
@@ -146,92 +148,75 @@ const TimeGroupCardComponent: React.FC<TimeGroupCardProps> = ({
                                 <QuickRescheduleActions onAddMinutes={handleApplyOffset} />
 
                                 <View style={styles.switchRow}>
-                                    <PaperText variant="bodyLarge">Apply to future days?</PaperText>
-                                    <Switch value={isPersistent} onValueChange={setIsPersistent} />
+                                    <PaperText variant="bodyLarge" style={{ fontFamily: 'System', fontWeight: '500' }}>Apply to future sessions?</PaperText>
+                                    <Switch value={isPersistent} onValueChange={setIsPersistent} color={theme.colors.primary} />
                                 </View>
 
                                 <View style={styles.buttonRow}>
-                                    <Button onPress={onDismiss} style={{ marginRight: 8 }}>Cancel</Button>
-                                    <Button mode="contained" onPress={onConfirm}>Done</Button>
+                                    <Button onPress={onDismiss} textColor={theme.colors.onSurfaceVariant}>Dismiss</Button>
+                                    <Button mode="contained" onPress={onConfirm} style={styles.syncButton}>Apply Change</Button>
                                 </View>
                             </View>
                         )}
                     </AnimatedSizeWrapper>
                 </Modal>
             </Portal>
-
-            <View style={[styles.cardContainer, { backgroundColor: theme.colors.surface }]}>
-                {doses.map((dose, index) => (
-                    <View key={dose.id}>
-                        <PillEntry
-                            dose={dose}
-                            onTake={onTake}
-                            onSkip={onSkip}
-                            onPending={onPending}
-                        />
-                        {index < doses.length - 1 && <View style={styles.divider} />}
-                    </View>
-                ))}
-            </View>
         </View>
     );
 };
 
-// Memoize to prevent unnecessary re-renders
 export const TimeGroupCard = memo(TimeGroupCardComponent);
 
 const styles = StyleSheet.create({
     container: {
-        marginBottom: 16,
+        marginBottom: 36,
     },
     cardContainer: {
-        borderRadius: 24,
+        borderRadius: 32,
         paddingVertical: 16,
-        // Elevation is handled by flattened style in component or Paper's shadow support, 
-        // but for now we'll use standard shadow styles or theme.
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        paddingHorizontal: 12,
     },
     headerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 12,
-        paddingHorizontal: 8,
+        paddingHorizontal: 12,
     },
     groupName: {
-        fontSize: 20,
-        fontWeight: 'bold',
-    },
-    timeText: {
-        fontSize: 16,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: '#F0F0F0', // Or theme.colors.outlineVariant
-        marginHorizontal: 16,
+        fontSize: 22,
+        letterSpacing: -0.5,
     },
     originalTime: {
-        fontSize: 16,
-        marginLeft: 8,
-        opacity: 0.6,
+        marginLeft: 10,
+        opacity: 0.5,
+        fontSize: 14,
     },
     modalContainer: {
-        padding: 24,
+        padding: 32,
         margin: 20,
-        borderRadius: 28,
+        borderRadius: 32,
+        elevation: 0,
+    },
+    modalTitle: {
+        marginBottom: 24,
+        textAlign: 'center',
+        fontSize: 24,
     },
     switchRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 24,
+        marginBottom: 32,
+        marginTop: 16,
     },
     buttonRow: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
+        gap: 12,
     },
+    syncButton: {
+        borderRadius: 20,
+        paddingHorizontal: 8,
+    }
 });

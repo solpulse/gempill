@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Image, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTheme, Button } from 'react-native-paper';
+import { useTheme, Button, Text as PaperText, TextInput as PaperInput, Portal, Dialog } from 'react-native-paper';
 import { useUser } from '../context/UserContext';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/GempillTypes';
@@ -16,18 +16,15 @@ interface Props {
 export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
     const theme = useTheme();
     const { updateUserProfile } = useUser();
-
-    // Step 0: Profile Input
-    // Step 1: Prompt to add meds
     const [step, setStep] = useState(0);
-
     const [name, setName] = useState('');
     const [age, setAge] = useState('');
     const [weight, setWeight] = useState('');
+    const [errorVisible, setErrorVisible] = useState(false);
 
     const handleProfileSubmit = async () => {
         if (!name.trim()) {
-            alert('Please enter your name');
+            setErrorVisible(true);
             return;
         }
         updateUserProfile({ name, age, weight });
@@ -35,7 +32,6 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
     };
 
     const handleAddMedication = () => {
-        // Navigate to AddMedication with special flag
         navigation.navigate('AddMedication', { isOnboarding: true });
     };
 
@@ -48,73 +44,71 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
                 <View style={styles.content}>
                     {step === 0 ? (
                         <>
-                            <View style={styles.iconContainer}>
-                                <MaterialCommunityIcons name="account-circle-outline" size={80} color={theme.colors.primary} />
+                            <View style={[styles.squircleIcon, { backgroundColor: theme.colors.surfaceVariant }]}>
+                                <MaterialCommunityIcons name="account-circle-outline" size={56} color={theme.colors.primary} />
                             </View>
-                            <Text style={[styles.title, { color: theme.colors.onBackground }]}>Welcome to Gempill</Text>
-                            <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>Let's get to know you better</Text>
+                            
+                            <PaperText variant="displaySmall" style={[styles.title, { color: theme.colors.primary, fontFamily: Platform.OS === 'ios' ? 'System' : 'serif' }]}>
+                                Protocol Profile
+                            </PaperText>
+                            <PaperText variant="bodyLarge" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
+                                Personalize your apothecary archive for better adherence insights.
+                            </PaperText>
 
                             <View style={styles.form}>
-                                <Text style={[styles.label, { color: theme.colors.onSurface }]}>Name</Text>
-                                <TextInput
-                                    style={[styles.input, {
-                                        backgroundColor: theme.colors.surface,
-                                        color: theme.colors.onSurface,
-                                        borderColor: theme.colors.outline
-                                    }]}
-                                    placeholder="Your Name"
-                                    placeholderTextColor={theme.colors.onSurfaceVariant}
+                                <PaperInput
+                                    label="Full Name"
+                                    mode="flat"
                                     value={name}
                                     onChangeText={setName}
+                                    style={styles.input}
+                                    activeUnderlineColor={theme.colors.primary}
+                                    contentStyle={{ fontFamily: 'System' }}
                                 />
 
-                                <Text style={[styles.label, { color: theme.colors.onSurface }]}>Age</Text>
-                                <TextInput
-                                    style={[styles.input, {
-                                        backgroundColor: theme.colors.surface,
-                                        color: theme.colors.onSurface,
-                                        borderColor: theme.colors.outline
-                                    }]}
-                                    placeholder="Age"
-                                    placeholderTextColor={theme.colors.onSurfaceVariant}
-                                    value={age}
-                                    onChangeText={setAge}
-                                    keyboardType="numeric"
-                                />
-
-                                <Text style={[styles.label, { color: theme.colors.onSurface }]}>Weight</Text>
-                                <TextInput
-                                    style={[styles.input, {
-                                        backgroundColor: theme.colors.surface,
-                                        color: theme.colors.onSurface,
-                                        borderColor: theme.colors.outline
-                                    }]}
-                                    placeholder="Weight (kg/lbs)"
-                                    placeholderTextColor={theme.colors.onSurfaceVariant}
-                                    value={weight}
-                                    onChangeText={setWeight}
-                                    keyboardType="numeric"
-                                />
+                                <View style={styles.row}>
+                                    <PaperInput
+                                        label="Age"
+                                        mode="flat"
+                                        value={age}
+                                        onChangeText={setAge}
+                                        keyboardType="numeric"
+                                        style={[styles.input, { flex: 1, marginRight: 12 }]}
+                                        activeUnderlineColor={theme.colors.primary}
+                                    />
+                                    <PaperInput
+                                        label="Weight (kg)"
+                                        mode="flat"
+                                        value={weight}
+                                        onChangeText={setWeight}
+                                        keyboardType="numeric"
+                                        style={[styles.input, { flex: 1 }]}
+                                        activeUnderlineColor={theme.colors.primary}
+                                    />
+                                </View>
 
                                 <Button
                                     mode="contained"
                                     onPress={handleProfileSubmit}
                                     style={styles.button}
-                                    contentStyle={{ paddingVertical: 8 }}
+                                    contentStyle={styles.buttonContent}
+                                    labelStyle={styles.buttonLabel}
                                 >
-                                    Continue
+                                    Initialize Protocol
                                 </Button>
                             </View>
                         </>
                     ) : (
                         <>
-                            <View style={styles.iconContainer}>
-                                <MaterialCommunityIcons name="pill" size={80} color={theme.colors.secondary} />
+                            <View style={[styles.squircleIcon, { backgroundColor: theme.colors.surfaceVariant }]}>
+                                <MaterialCommunityIcons name="pill" size={56} color={theme.colors.primary} />
                             </View>
-                            <Text style={[styles.title, { color: theme.colors.onBackground }]}>Add Your First Medication</Text>
-                            <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
-                                To get the most out of Gempill, let's set up your first medication or supplement schedule.
-                            </Text>
+                            <PaperText variant="displaySmall" style={[styles.title, { color: theme.colors.primary, fontFamily: Platform.OS === 'ios' ? 'System' : 'serif' }]}>
+                                Catalog Intake
+                            </PaperText>
+                            <PaperText variant="bodyLarge" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
+                                To begin tracking, let's archive your first medication or supplement schedule.
+                            </PaperText>
 
                             <View style={styles.spacer} />
 
@@ -122,13 +116,27 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
                                 mode="contained"
                                 onPress={handleAddMedication}
                                 style={styles.button}
-                                contentStyle={{ paddingVertical: 8 }}
+                                contentStyle={styles.buttonContent}
+                                labelStyle={styles.buttonLabel}
+                                icon="plus"
                             >
-                                Add Medication
+                                Add First Medication
                             </Button>
                         </>
                     )}
                 </View>
+
+                <Portal>
+                    <Dialog visible={errorVisible} onDismiss={() => setErrorVisible(false)} style={{ borderRadius: 28, backgroundColor: theme.colors.surface }}>
+                        <Dialog.Title style={{ fontFamily: Platform.OS === 'ios' ? 'System' : 'serif' }}>Identity Required</Dialog.Title>
+                        <Dialog.Content>
+                            <PaperText variant="bodyMedium">Please provide a name to initialize your local protocol profile.</PaperText>
+                        </Dialog.Content>
+                        <Dialog.Actions>
+                            <Button onPress={() => setErrorVisible(false)}>Understood</Button>
+                        </Dialog.Actions>
+                    </Dialog>
+                </Portal>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -140,21 +148,24 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        padding: 24,
+        padding: 32,
         justifyContent: 'center',
     },
-    iconContainer: {
+    squircleIcon: {
+        width: 100,
+        height: 100,
+        borderRadius: 24,
         alignItems: 'center',
-        marginBottom: 24,
+        justifyContent: 'center',
+        alignSelf: 'center',
+        marginBottom: 32,
     },
     title: {
-        fontSize: 28,
-        fontWeight: 'bold',
         textAlign: 'center',
         marginBottom: 12,
+        fontWeight: 'normal',
     },
     subtitle: {
-        fontSize: 16,
         textAlign: 'center',
         marginBottom: 48,
         lineHeight: 24,
@@ -162,24 +173,27 @@ const styles = StyleSheet.create({
     form: {
         width: '100%',
     },
-    label: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        marginBottom: 8,
-        textTransform: 'uppercase',
-    },
     input: {
-        borderWidth: 1,
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 24,
-        fontSize: 16,
+        marginBottom: 16,
+        backgroundColor: 'transparent',
+    },
+    row: {
+        flexDirection: 'row',
+        marginBottom: 12,
     },
     button: {
-        borderRadius: 30,
-        marginTop: 12,
+        borderRadius: 32,
+        marginTop: 24,
+    },
+    buttonContent: {
+        height: 56,
+    },
+    buttonLabel: {
+        fontSize: 16,
+        fontWeight: '700',
+        letterSpacing: 0.5,
     },
     spacer: {
-        height: 40,
+        height: 24,
     }
 });

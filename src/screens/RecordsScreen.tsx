@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CalendarView } from '../components/CalendarView';
 import { AdherenceCard } from '../components/AdherenceCard';
@@ -11,7 +11,7 @@ import { RootStackParamList } from '../types/GempillTypes';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMedication } from '../context/MedicationContext';
 import { useMonthlyRecords } from '../hooks/useMonthlyRecords';
-import { useTheme, Chip } from 'react-native-paper';
+import { useTheme, Chip, FAB, Portal, Dialog, Button, Text as PaperText } from 'react-native-paper';
 import Constants from 'expo-constants';
 
 import { Alert } from 'react-native';
@@ -27,6 +27,8 @@ export const RecordsScreen = () => {
     const theme = useTheme();
 
     const [selectedFilter, setSelectedFilter] = React.useState<FilterType>('Active');
+    const [isProfileDialogVisible, setIsProfileDialogVisible] = React.useState(false);
+    const [isResetConfirmVisible, setIsResetConfirmVisible] = React.useState(false);
 
     const filteredMedications = React.useMemo(() => {
         return medications.filter(med => {
@@ -52,56 +54,37 @@ export const RecordsScreen = () => {
 
     const { checkPermissions } = usePermission();
 
-    const handleProfilePress = () => {
-        Alert.alert(
-            "System & Profile",
-            "Select an action to manage your app state or verify system reliability.",
-            [
-                { 
-                    text: "Check Permissions", 
-                    onPress: async () => {
-                        console.log('[Records] Manual permission check triggered');
-                        await checkPermissions();
-                    }
-                },
-                { 
-                    text: "Reset Onboarding", 
-                    style: 'destructive',
-                    onPress: () => {
-                        Alert.alert(
-                            "Confirm Reset",
-                            "This will clear your profile and return to onboarding. Your medications will remain but you'll need to set up your profile again.",
-                            [
-                                { text: "Cancel", style: "cancel" },
-                                { 
-                                    text: "Reset", 
-                                    style: 'destructive', 
-                                    onPress: async () => await resetOnboarding() 
-                                }
-                            ]
-                        );
-                    }
-                },
-                { text: "Dismiss", style: "cancel" }
-            ]
-        );
+    const showProfileDialog = () => setIsProfileDialogVisible(true);
+    const hideProfileDialog = () => setIsProfileDialogVisible(false);
+
+    const showResetConfirm = () => {
+        hideProfileDialog();
+        setIsResetConfirmVisible(true);
+    };
+    const hideResetConfirm = () => setIsResetConfirmVisible(false);
+
+    const handleReset = async () => {
+        hideResetConfirm();
+        await resetOnboarding();
     };
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
-            <ScrollView style={styles.scrollView} contentContainerStyle={[styles.contentContainer, { paddingBottom: 100 }]}>
-                {/* Header */}
+            <ScrollView style={styles.scrollView} contentContainerStyle={[styles.contentContainer, { paddingBottom: 120 }]}>
+                {/* Apothecary Header */}
                 <View style={styles.header}>
-                    <View>
-                        <Text style={[styles.headerTitle, { color: theme.colors.onBackground }]}>Records</Text>
-                        <Text style={{ fontSize: 12, color: theme.colors.onSurfaceVariant }}>v{Constants.expoConfig?.version ?? '1.0.0'}</Text>
+                    <View style={styles.headerTitleContainer}>
+                        <PaperText variant="displaySmall" style={[styles.headerTitle, { color: theme.colors.primary, fontFamily: Platform.OS === 'ios' ? 'System' : 'serif' }]}>
+                            Apothecary Records
+                        </PaperText>
+                        <View style={styles.curatorRule} />
                     </View>
-                    <TouchableOpacity onPress={handleProfilePress}>
-                        <Ionicons name="person-circle-outline" size={32} color={theme.colors.onSurface} />
+                    <TouchableOpacity onPress={showProfileDialog} style={[styles.profileButton, { backgroundColor: theme.colors.surfaceVariant }]}>
+                        <Ionicons name="finger-print-outline" size={24} color={theme.colors.primary} />
                     </TouchableOpacity>
                 </View>
 
-                {/* Calendar */}
+                {/* Calendar Record - Intentional Floating */}
                 <CalendarView
                     currentDate={currentDate}
                     onMonthChange={setCurrentDate}
@@ -109,15 +92,19 @@ export const RecordsScreen = () => {
                     onDayPress={handleDayPress}
                 />
 
-                {/* Adherence Streak */}
-                <AdherenceCard streakDays={monthlyStreak} percentage={monthlyPercentage} />
+                {/* Calibration Streak */}
+                <View style={{ marginTop: 24 }}>
+                    <AdherenceCard streakDays={monthlyStreak} percentage={monthlyPercentage} />
+                </View>
 
-                {/* My Pill Box */}
-                <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>My Pill Box</Text>
+                {/* Management Section */}
+                <PaperText variant="headlineSmall" style={[styles.sectionTitle, { color: theme.colors.onSurface, fontFamily: Platform.OS === 'ios' ? 'System' : 'serif' }]}>
+                    Management Box
+                </PaperText>
 
-                {/* Filter Chips */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                {/* Refined Filter Chips */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 24 }}>
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
                         {(['Active', 'Paused', 'Finished', 'Cancelled'] as const).map((filter) => {
                             const isSelected = selectedFilter === filter;
                             return (
@@ -125,8 +112,12 @@ export const RecordsScreen = () => {
                                     key={filter}
                                     selected={isSelected}
                                     onPress={() => setSelectedFilter(filter)}
-                                    showSelectedOverlay
-                                    style={{ backgroundColor: isSelected ? theme.colors.secondaryContainer : theme.colors.surfaceVariant }}
+                                    showSelectedOverlay={false}
+                                    style={[
+                                        styles.filterChip, 
+                                        { backgroundColor: isSelected ? theme.colors.primary : theme.colors.surfaceVariant }
+                                    ]}
+                                    textStyle={{ color: isSelected ? '#FFFFFF' : theme.colors.onSurfaceVariant, fontSize: 13, fontWeight: isSelected ? '700' : '500' }}
                                 >
                                     {filter}
                                 </Chip>
@@ -136,19 +127,20 @@ export const RecordsScreen = () => {
                 </ScrollView>
 
                 {filteredMedications.length === 0 ? (
-                    <Text style={{ textAlign: 'center', marginTop: 20, color: theme.colors.onSurfaceVariant }}>
-                        No {selectedFilter.toLowerCase()} medications.
-                    </Text>
+                    <View style={styles.emptyListContainer}>
+                        <PaperText variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, fontStyle: 'italic', textAlign: 'center' }}>
+                            Your {selectedFilter.toLowerCase()} archives are currently empty.
+                        </PaperText>
+                    </View>
                 ) : (
                     filteredMedications.map((med) => (
                         <MedicationListItem
                             key={med.id}
                             name={med.name}
-                            details={`${med.dosage} ${med.dosageUnit}, ${med.frequency}`}
+                            details={`${med.dosage} ${med.dosageUnit} • ${med.frequency}`}
                             iconColor={med.color}
                             icon={med.icon}
                             onPress={() => {
-                                // Serialize dates to strings to avoid non-serializable warning
                                 const serializedMed = {
                                     ...med,
                                     startDate: typeof med.startDate === 'string' ? med.startDate : new Date(med.startDate).toISOString(),
@@ -159,28 +151,56 @@ export const RecordsScreen = () => {
                         />
                     ))
                 )}
-
             </ScrollView>
 
-            {/* Add Button FAB */}
-            <TouchableOpacity
-                style={[styles.fab, { backgroundColor: theme.colors.primary, bottom: 24 }]}
+            {/* Apothecary FAB - Replaced custom FAB with MD3 Paper FAB */}
+            <FAB
+                icon="plus"
+                label="Prescription"
+                style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+                color="#FFFFFF"
                 onPress={() => navigation.navigate('AddMedication', {})}
-            >
-                <Ionicons name="add" size={24} color={theme.colors.onPrimary} />
-                <Text style={[styles.fabText, { color: theme.colors.onPrimary }]}>Add</Text>
-            </TouchableOpacity>
+                variant="primary"
+            />
 
-            {/* Day Detail Modal */}
-            {selectedDay && (
-                <DayDetailModal
-                    visible={isModalVisible}
-                    onDismiss={dismissModal}
-                    date={selectedDay.date}
-                    adherence={selectedDay.data.adherence}
-                    logs={selectedDay.data.logs}
-                />
-            )}
+            {/* Overlays - Portalized and Themed */}
+            <Portal>
+                {/* Day Detail - Logic Reserved */}
+                {selectedDay && (
+                    <DayDetailModal
+                        visible={isModalVisible}
+                        onDismiss={dismissModal}
+                        date={selectedDay.date}
+                        adherence={selectedDay.data.adherence}
+                        logs={selectedDay.data.logs}
+                    />
+                )}
+
+                {/* Profile & System Reliability Dialog */}
+                <Dialog visible={isProfileDialogVisible} onDismiss={hideProfileDialog} style={styles.dialog}>
+                    <Dialog.Title style={{ fontFamily: Platform.OS === 'ios' ? 'System' : 'serif' }}>System Reliability</Dialog.Title>
+                    <Dialog.Content>
+                        <PaperText variant="bodyMedium">Select an action to manage your apothecary state or verify background delivery permissions.</PaperText>
+                    </Dialog.Content>
+                    <Dialog.Actions style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+                        <Button mode="contained-tonal" onPress={async () => { hideProfileDialog(); await checkPermissions(); }} style={styles.dialogButton}>Verify Permissions</Button>
+                        <Button mode="text" onPress={showResetConfirm} textColor={theme.colors.error} style={styles.dialogButton}>Reset Onboarding</Button>
+                        <Button mode="text" onPress={hideProfileDialog} style={styles.dialogButton}>Dismiss</Button>
+                    </Dialog.Actions>
+                </Dialog>
+
+                {/* Reset Confirmation Dialog */}
+                <Dialog visible={isResetConfirmVisible} onDismiss={hideResetConfirm} style={styles.dialog}>
+                    <Dialog.Title style={{ color: theme.colors.error, fontFamily: Platform.OS === 'ios' ? 'System' : 'serif' }}>Confirm Reset</Dialog.Title>
+                    <Dialog.Content>
+                        <PaperText variant="bodyMedium">This will clear your profile and return to onboarding. Your recorded medications will remain in storage.</PaperText>
+                    </Dialog.Content>
+                    <Dialog.Actions>
+                        <Button onPress={hideResetConfirm}>Cancel</Button>
+                        <Button mode="contained" onPress={handleReset} buttonColor={theme.colors.error}>Confirm Reset</Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
         </SafeAreaView>
     );
 };
@@ -193,44 +213,62 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     contentContainer: {
-        padding: 20,
+        paddingHorizontal: 24, // Wider margins
+        paddingTop: 32,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 24, // theme.spacing.l
-        marginTop: 16,   // theme.spacing.m
+        alignItems: 'flex-start',
+        marginBottom: 32,
+    },
+    headerTitleContainer: {
+        flex: 1,
+        paddingRight: 20,
     },
     headerTitle: {
-        fontSize: 28,
-        fontWeight: 'bold',
+        fontWeight: 'normal',
+        lineHeight: 36,
+    },
+    curatorRule: {
+        width: 40,
+        height: 2,
+        backgroundColor: '#324E58',
+        marginTop: 8,
+        opacity: 0.1,
+    },
+    profileButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     sectionTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 16, // theme.spacing.m
-        marginTop: 24,    // theme.spacing.l
+        marginBottom: 24,
+        marginTop: 40,
+    },
+    filterChip: {
+        borderRadius: 12,
+        borderWidth: 0,
+    },
+    emptyListContainer: {
+        padding: 40,
+        backgroundColor: '#F5F3F0',
+        borderRadius: 24,
+        marginTop: 8,
     },
     fab: {
         position: 'absolute',
-        bottom: 24, // theme.spacing.l
-        right: 24,  // theme.spacing.l
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: 16, // theme.spacing.m
-        paddingVertical: 16, // theme.spacing.m
-        paddingHorizontal: 20,
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
+        bottom: 32,
+        right: 24,
+        borderRadius: 20,
     },
-    fabText: {
-        fontWeight: 'bold',
-        fontSize: 16,
-        marginLeft: 8,
+    dialog: {
+        borderRadius: 32,
+        backgroundColor: '#FBF9F6',
+    },
+    dialogButton: {
+        borderRadius: 12,
     },
 });

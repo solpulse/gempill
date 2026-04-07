@@ -7,39 +7,40 @@ export const theme = {
     ...MD3LightTheme,
     colors: {
         ...MD3LightTheme.colors,
-        primary: '#5A55D1', // Purple/Blue from design
-        primaryContainer: '#E8E7FA', // Light background for icons (using as container)
-        secondary: '#5A55D1', // Using primary as secondary for now due to lack of strict secondary color in legacy
+        primary: '#324E58', // Slate Blue
+        primaryContainer: '#4A6670', // Tonal depth
+        onPrimaryContainer: '#FFFFFF',
+        
+        secondary: '#587C7C', // Muted Teal (from DESIGN.md hints)
+        secondaryContainer: '#DDE4E4',
 
-        background: '#F8F9FA', // Light gray background
-        surface: '#FFFFFF', // White cards
-        surfaceVariant: '#E7E0EC', // MD3 Surface Variant
-
+        background: '#FBF9F6', // Warm Stone
+        surface: '#FBF9F6', // Warm Stone
+        surfaceVariant: '#E4E2DF', // surface-container-highest
+        
         onSurface: '#1A1C1E', // Dark text
-        onSurfaceVariant: '#49454F', // Darker gray for variant content
+        onSurfaceVariant: '#49454F',
 
-        error: '#D50000', // Bright Red
-        errorContainer: '#FF8A80', // Vibrant Light Red
-        onErrorContainer: '#410002', // Dark red text on error container (Guessing contrast)
+        error: '#D50000',
+        errorContainer: '#FF8A80',
 
-        // Custom additions often need to be handled via extending types if we were strict TS, 
-        // but for now we map closest standard keys or add extensions if we typed it properly.
-        // For standard MD3, we stick to standard keys where possible.
+        tertiary: '#738374', // Earthy Sage
+        tertiaryContainer: '#DCE5DC',
 
-        // Re-mapping legacy 'success' to a custom property requires extending the theme type usually.
-        // For simplicity in this step, we will use 'tertiary' for success if appropriate or keep it custom.
-        tertiary: '#00C853', // Bright Green
-        tertiaryContainer: '#B9F6CA', // Vibrant Light Green
-
-        outline: '#E0E0E0', // Light border
+        outline: '#C2C7CA', // outline-variant (15% opacity use cases)
+        outlineVariant: '#E4E2DF',
     },
     spacing: {
         xs: 4,
         s: 8,
         m: 16,
-        l: 24,
+        l: 20, // Updated 20 spacing token
         xl: 32,
-        xxl: 40,
+        xxl: 48, // Updated 48 spacing/rounding token
+    },
+    roundness: {
+        lg: 32,
+        xl: 48,
     },
 };
 

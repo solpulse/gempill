@@ -15,10 +15,11 @@ export const ColorSelector: React.FC<ColorSelectorProps> = ({ selectedColor, onS
             {options.map((c, index) => (
                 <TouchableOpacity
                     key={index}
+                    activeOpacity={0.8}
                     style={[
-                        styles.colorCircle,
+                        styles.colorBox,
                         { backgroundColor: c },
-                        selectedColor === c && [styles.selectedColor, { borderColor: theme.colors.onSurface }]
+                        selectedColor === c && [styles.selectedColor, { borderColor: theme.colors.primary }]
                     ]}
                     onPress={() => onSelectColor(c)}
                 />
@@ -31,24 +32,15 @@ const styles = StyleSheet.create({
     colorRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        justifyContent: 'space-between',
+        gap: 12,
         width: '100%',
     },
-    colorCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+    colorBox: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
     },
     selectedColor: {
         borderWidth: 3,
-    },
-    addColorButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderStyle: 'dashed',
-        justifyContent: 'center',
-        alignItems: 'center',
     },
 });

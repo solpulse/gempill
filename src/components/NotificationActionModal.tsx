@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Modal, Portal, Text, Button, useTheme, Card, IconButton } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Platform } from 'react-native';
+import { Modal, Portal, Button, useTheme, Text as PaperText } from 'react-native-paper';
 import { useNotificationAction } from '../context/NotificationActionContext';
 import { useMedication } from '../context/MedicationContext';
 import { QuickRescheduleActions } from './QuickRescheduleActions';
@@ -8,7 +8,7 @@ import { TimePicker } from 'react-native-paper-dates';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withTiming, runOnJS } from 'react-native-reanimated';
 import { AnimatedSizeWrapper } from './AnimatedSizeWrapper';
-import { formatTimeForDisplay } from '../utils/TimeUtils'; // Removed unused addMinutesToTime
+import { formatTimeForDisplay } from '../utils/TimeUtils';
 import { PillEntry } from './PillEntry';
 
 export const NotificationActionModal: React.FC = () => {
@@ -16,40 +16,26 @@ export const NotificationActionModal: React.FC = () => {
     const { doses, updateDoseStatus, rescheduleDoseGroup } = useMedication();
     const theme = useTheme();
 
-    // Local state for reschedule flow
     const [showReschedule, setShowReschedule] = useState(false);
     const [hours, setHours] = useState(12);
     const [minutes, setMinutes] = useState(0);
     const [focused, setFocused] = useState<'hours' | 'minutes'>('hours');
 
-    // Shared value for opacity animation
     const opacity = useSharedValue(1);
 
     const animatedStyle = useAnimatedStyle(() => {
-        return {
-            opacity: opacity.value,
-        };
+        return { opacity: opacity.value };
     });
 
-    // Filter filtering doses for THIS time group (include all statuses so we show animation)
-    const groupDoses = doses.filter(
-        d => d.scheduledTime === activeTimeGroup
-    );
-
-    // Filter for pending count for auto-close logic
+    const groupDoses = doses.filter(d => d.scheduledTime === activeTimeGroup);
     const pendingCount = groupDoses.filter(d => d.status === 'Pending').length;
 
-    // Reset opacity when activeTimeGroup changes (modal re-opens)
     useEffect(() => {
-        if (activeTimeGroup) {
-            opacity.value = 1;
-        }
+        if (activeTimeGroup) opacity.value = 1;
     }, [activeTimeGroup]);
 
-    // Auto-close logic
     useEffect(() => {
         if (activeTimeGroup && pendingCount === 0 && !showReschedule) {
-            // Delay to allow animation to finish and user to see "Taken" state
             const timer = setTimeout(() => {
                 handleCloseWithAnimation();
             }, 1000);
@@ -59,44 +45,27 @@ export const NotificationActionModal: React.FC = () => {
 
     if (!activeTimeGroup) return null;
 
-    // Use the first dose (if any) to pre-fill reschedule time, or parse activeTimeGroup
-    const [hStr, mStr] = activeTimeGroup.split(':');
     const displayTime = formatTimeForDisplay(activeTimeGroup);
 
-    // Handlers for individual items
-    const handleTake = (doseId: string) => {
-        updateDoseStatus(doseId, 'Taken');
-    };
-
-    const handleSkip = (doseId: string) => {
-        updateDoseStatus(doseId, 'Skipped');
-    };
-
-    // Reschedule Logic
     const handleQuickReschedule = (addedMinutes: number) => {
-        // Snooze from NOW
         const now = new Date();
         const newTimeDate = new Date(now.getTime() + addedMinutes * 60000);
         const newTimeStr = `${newTimeDate.getHours().toString().padStart(2, '0')}:${newTimeDate.getMinutes().toString().padStart(2, '0')}`;
-
         rescheduleDoseGroup(activeTimeGroup, newTimeStr, false);
         handleCloseWithAnimation();
     };
 
     const handleCloseWithAnimation = () => {
         opacity.value = withTiming(0, { duration: 250 }, (finished) => {
-            if (finished) {
-                // Run exit animation
-                runOnJS(hideNotificationAction)(activeTimeGroup || undefined);
-            }
+            if (finished) runOnJS(hideNotificationAction)(activeTimeGroup || undefined);
         });
     };
 
     const openFullReschedule = () => {
-        const totalMinutes = require('../utils/TimeUtils').parseTimeToMinutes(activeTimeGroup);
-        if (!isNaN(totalMinutes)) {
-            setHours(Math.floor(totalMinutes / 60));
-            setMinutes(totalMinutes % 60);
+        const parts = activeTimeGroup.split(':');
+        if (parts.length === 2) {
+            setHours(parseInt(parts[0]));
+            setMinutes(parseInt(parts[1]));
         }
         setShowReschedule(true);
     };
@@ -105,18 +74,24 @@ export const NotificationActionModal: React.FC = () => {
         const newTimeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
         rescheduleDoseGroup(activeTimeGroup, newTimeStr, false);
         setShowReschedule(false);
-        handleCloseWithAnimation(); // Should close with animation too? Assuming yes.
+        handleCloseWithAnimation();
     };
 
     return (
         <Portal>
-            <Modal visible={true} onDismiss={() => activeTimeGroup && hideNotificationAction(activeTimeGroup)} contentContainerStyle={[styles.container, { backgroundColor: theme.colors.surface }]}>
+            <Modal 
+                visible={true} 
+                onDismiss={() => activeTimeGroup && hideNotificationAction(activeTimeGroup)} 
+                contentContainerStyle={[styles.container, { backgroundColor: theme.colors.surface }]}
+            >
                 <Animated.View style={animatedStyle}>
                     <AnimatedSizeWrapper>
                         {showReschedule ? (
                             <View key="reschedule">
-                                <Text variant="headlineSmall" style={styles.title}>Reschedule Group ({displayTime})</Text>
-                                <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                                <PaperText variant="headlineSmall" style={[styles.title, { color: theme.colors.primary, fontFamily: Platform.OS === 'ios' ? 'System' : 'serif' }]}>
+                                    Archive Postponement
+                                </PaperText>
+                                <View style={{ alignItems: 'center', marginBottom: 24 }}>
                                     <TimePicker
                                         hours={hours}
                                         minutes={minutes}
@@ -124,63 +99,65 @@ export const NotificationActionModal: React.FC = () => {
                                         focused={focused}
                                         inputType="picker"
                                         use24HourClock={true}
-                                        onChange={({ hours: newHours, minutes: newMinutes }) => {
-                                            if (focused === 'hours') {
-                                                setHours(newHours);
-                                                setMinutes(newMinutes);
-                                                setFocused('minutes');
-                                            } else {
-                                                setHours(newHours);
-                                                setMinutes(newMinutes);
-                                            }
+                                        onChange={({ hours: h, minutes: m }) => {
+                                            setHours(h);
+                                            setMinutes(m);
+                                            if (focused === 'hours') setFocused('minutes');
                                         }}
                                     />
                                 </View>
                                 <View style={styles.buttonRow}>
-                                    <Button onPress={() => setShowReschedule(false)} style={{ marginRight: 8 }}>Back</Button>
-                                    <Button mode="contained" onPress={confirmReschedule}>Confirm</Button>
+                                    <Button onPress={() => setShowReschedule(false)} style={{ marginRight: 12 }}>REVERT</Button>
+                                    <Button mode="contained" onPress={confirmReschedule} style={{ borderRadius: 16 }}>CONFIRM</Button>
                                 </View>
                             </View>
                         ) : (
                             <View key="main">
-                                <Text variant="headlineSmall" style={styles.title}>Medications for {displayTime}</Text>
+                                <PaperText variant="headlineSmall" style={[styles.title, { color: theme.colors.primary, fontFamily: Platform.OS === 'ios' ? 'System' : 'serif' }]}>
+                                    Prescription Window
+                                </PaperText>
+                                <PaperText variant="labelLarge" style={[styles.timeLabel, { color: theme.colors.onSurfaceVariant }]}>
+                                    SCHEDULED FOR {displayTime}
+                                </PaperText>
 
-                                <ScrollView style={styles.listContainer}>
+                                <ScrollView style={styles.listContainer} showsVerticalScrollIndicator={false}>
                                     {groupDoses.map(dose => (
-                                        <View key={dose.id}>
-                                            <PillEntry
-                                                dose={dose}
-                                                onTake={(id) => updateDoseStatus(id, 'Taken')}
-                                                onSkip={(id) => updateDoseStatus(id, 'Skipped')}
-                                                onPending={(id) => updateDoseStatus(id, 'Pending')}
-                                            />
-                                            <View style={styles.divider} />
-                                        </View>
+                                        <PillEntry
+                                            key={dose.id}
+                                            dose={dose}
+                                            onTake={(id) => updateDoseStatus(id, 'Taken')}
+                                            onSkip={(id) => updateDoseStatus(id, 'Skipped')}
+                                            onPending={(id) => updateDoseStatus(id, 'Pending')}
+                                        />
                                     ))}
                                     {groupDoses.length === 0 && (
-                                        <Text style={{ textAlign: 'center', marginVertical: 20 }}>No meds for this time.</Text>
+                                        <PaperText style={{ textAlign: 'center', marginVertical: 32, opacity: 0.5 }}>Archive Clear</PaperText>
                                     )}
                                 </ScrollView>
 
-                                <Text variant="titleMedium" style={{ marginTop: 16, marginBottom: 8, textAlign: 'center' }}>Snooze / Reschedule All</Text>
-                                <QuickRescheduleActions onAddMinutes={handleQuickReschedule} />
+                                <View style={styles.rescheduleSection}>
+                                    <PaperText variant="labelMedium" style={styles.sectionLabel}>SNOOZE ALL ENTRIES</PaperText>
+                                    <QuickRescheduleActions onAddMinutes={handleQuickReschedule} />
 
-                                <Button
-                                    mode="contained-tonal"
-                                    onPress={openFullReschedule}
-                                    style={[styles.actionButton, { backgroundColor: theme.colors.secondaryContainer }]}
-                                    textColor={theme.colors.onSecondaryContainer}
-                                >
-                                    Choose Different Time
-                                </Button>
+                                    <Button
+                                        mode="contained-tonal"
+                                        onPress={openFullReschedule}
+                                        style={styles.fullActionButton}
+                                        contentStyle={styles.buttonHeight}
+                                        labelStyle={styles.buttonLabel}
+                                    >
+                                        CUSTOM ARCHIVE TIME
+                                    </Button>
 
-                                <Button
-                                    mode="outlined"
-                                    onPress={() => handleCloseWithAnimation()}
-                                    style={styles.actionButton}
-                                >
-                                    Close
-                                </Button>
+                                    <Button
+                                        mode="text"
+                                        onPress={() => handleCloseWithAnimation()}
+                                        style={styles.closeButton}
+                                        labelStyle={{ fontWeight: '700', letterSpacing: 1 }}
+                                    >
+                                        DISMISS
+                                    </Button>
+                                </View>
                             </View>
                         )}
                     </AnimatedSizeWrapper>
@@ -193,35 +170,52 @@ export const NotificationActionModal: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         padding: 24,
-        margin: 20,
-        borderRadius: 28,
-        maxHeight: '80%', // prevent overflow
+        margin: 16,
+        borderRadius: 48, // theme.roundness.xl
+        maxHeight: '85%',
     },
     title: {
         textAlign: 'center',
-        fontWeight: 'bold',
-        marginBottom: 16,
+        marginBottom: 8,
+        fontWeight: 'normal',
+    },
+    timeLabel: {
+        textAlign: 'center',
+        marginBottom: 24,
+        letterSpacing: 1.5,
+        opacity: 0.6,
     },
     listContainer: {
-        maxHeight: 300,
-        marginBottom: 8,
+        maxHeight: 320,
+        marginBottom: 16,
     },
-    divider: {
-        height: 1,
-        backgroundColor: '#F0F0F0',
-        marginHorizontal: 16,
+    rescheduleSection: {
+        marginTop: 8,
+        borderTopWidth: 0,
+    },
+    sectionLabel: {
+        textAlign: 'center',
+        opacity: 0.5,
+        fontWeight: '700',
+        letterSpacing: 1,
+        marginBottom: 8,
     },
     buttonRow: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
         marginTop: 16,
     },
-    successContainer: {
-        alignItems: 'center',
-        padding: 20
+    fullActionButton: {
+        marginTop: 8,
+        borderRadius: 20,
     },
-    actionButton: {
-        marginTop: 12,
-        borderRadius: 20, // Pill shape
-    }
+    closeButton: {
+        marginTop: 8,
+    },
+    buttonHeight: {
+        height: 52,
+    },
+    buttonLabel: {
+        fontWeight: '700',
+    },
 });

@@ -4,6 +4,7 @@ import { TabNavigator } from './TabNavigator';
 import { MedDetailScreen } from '../screens/MedDetailScreen';
 import { AddMedicationScreen } from '../screens/AddMedicationScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
+import { useTheme } from 'react-native-paper';
 import { useUser } from '../context/UserContext';
 import { View, ActivityIndicator } from 'react-native';
 import { RootStackParamList } from '../types/GempillTypes';
@@ -12,11 +13,12 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const AppNavigator = () => {
     const { hasCompletedOnboarding, isLoading } = useUser();
+    const theme = useTheme();
 
     if (isLoading) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" />
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
             </View>
         );
     }
@@ -26,20 +28,19 @@ export const AppNavigator = () => {
             initialRouteName={hasCompletedOnboarding ? "Main" : "Onboarding"}
             screenOptions={{
                 headerShown: false,
-                contentStyle: { backgroundColor: '#F5F5F5' },
-                animation: 'slide_from_right', // Smooth native slide
-                animationDuration: 300, // Slightly slower for smoother feel
+                contentStyle: { backgroundColor: theme.colors.background },
+                animation: 'slide_from_right',
+                animationDuration: 300,
             }}
         >
             {hasCompletedOnboarding ? (
-                // Post-onboarding stack
                 <>
                     <Stack.Screen name="Main" component={TabNavigator} />
                     <Stack.Screen
                         name="MedDetail"
                         component={MedDetailScreen}
                         options={{
-                            animation: 'slide_from_bottom', // Modal-like for detail screens
+                            animation: 'slide_from_bottom',
                         }}
                     />
                     <Stack.Screen
@@ -47,12 +48,11 @@ export const AppNavigator = () => {
                         component={AddMedicationScreen}
                         options={{
                             animation: 'slide_from_bottom',
-                            presentation: 'modal', // Full modal presentation
+                            presentation: 'modal',
                         }}
                     />
                 </>
             ) : (
-                // Onboarding stack
                 <>
                     <Stack.Screen name="Onboarding" component={OnboardingScreen} />
                     <Stack.Screen

@@ -16,17 +16,18 @@ export const IconSelector: React.FC<IconSelectorProps> = ({ selectedIcon, onSele
             {options.map((i, index) => (
                 <TouchableOpacity
                     key={index}
+                    activeOpacity={0.8}
                     style={[
-                        styles.iconCircle,
+                        styles.iconBox,
                         { backgroundColor: theme.colors.surfaceVariant },
-                        selectedIcon === i && { backgroundColor: theme.colors.tertiaryContainer }
+                        selectedIcon === i && { backgroundColor: theme.colors.primary }
                     ]}
                     onPress={() => onSelectIcon(i)}
                 >
                     <MedicationIcon
                         name={i}
-                        size={24}
-                        color={selectedIcon === i ? theme.colors.tertiary : theme.colors.onSurfaceVariant}
+                        size={22}
+                        color={selectedIcon === i ? '#FFFFFF' : theme.colors.primary}
                     />
                 </TouchableOpacity>
             ))}
@@ -39,12 +40,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 12,
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start',
     },
-    iconCircle: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+    iconBox: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
     },

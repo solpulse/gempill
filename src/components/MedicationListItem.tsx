@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { MedicationIcon } from './MedicationIcon';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme, Text as PaperText } from 'react-native-paper';
 
 interface MedicationListItemProps {
     name: string;
@@ -20,21 +20,23 @@ export const MedicationListItem: React.FC<MedicationListItemProps> = ({
     onPress
 }) => {
     const theme = useTheme();
-    // Default to tertiary container if no color provided, similar to successLight
-    const backgroundColor = iconColor || theme.colors.tertiaryContainer;
 
     return (
-        <TouchableOpacity style={[styles.container, { backgroundColor: theme.colors.surface }]} onPress={onPress}>
-            <View style={[styles.iconContainer, { backgroundColor }]}>
-                <MedicationIcon name={icon} size={24} color={theme.colors.onSurface} />
+        <TouchableOpacity 
+            style={[styles.container, { backgroundColor: theme.colors.surfaceVariant }]} 
+            onPress={onPress}
+            activeOpacity={0.85}
+        >
+            <View style={[styles.iconContainer, { backgroundColor: theme.colors.surface }]}>
+                <MedicationIcon name={icon} size={22} color={theme.colors.primary} />
             </View>
 
             <View style={styles.textContainer}>
-                <Text style={[styles.name, { color: theme.colors.onSurface }]}>{name}</Text>
-                <Text style={[styles.details, { color: theme.colors.onSurfaceVariant }]}>{details}</Text>
+                <PaperText variant="titleMedium" style={[styles.name, { color: theme.colors.primary }]}>{name}</PaperText>
+                <PaperText variant="bodySmall" style={[styles.details, { color: theme.colors.onSurfaceVariant }]}>{details}</PaperText>
             </View>
 
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.onSurfaceVariant} />
+            <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.primary} />
         </TouchableOpacity>
     );
 };
@@ -43,19 +45,14 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',
-        borderRadius: 24,
+        borderRadius: 32, // theme.roundness.lg
         padding: 16,
         marginBottom: 12,
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
     },
     iconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 44,
+        height: 44,
+        borderRadius: 14, // Squircle
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
@@ -64,11 +61,10 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     name: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 4,
+        fontWeight: '600',
+        marginBottom: 2,
     },
     details: {
-        fontSize: 14,
+        fontSize: 13,
     },
 });

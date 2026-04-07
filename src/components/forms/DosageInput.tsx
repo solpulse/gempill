@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Menu, useTheme } from 'react-native-paper';
+import { View, StyleSheet, Platform } from 'react-native';
+import { Menu, useTheme, TextInput as PaperTextInput, Text as PaperText, Button } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface DosageInputProps {
     dosage: string;
@@ -28,48 +28,44 @@ export const DosageInput: React.FC<DosageInputProps> = ({
 
     return (
         <View style={styles.row}>
-            <View style={[styles.inputGroup, { flex: 1, marginRight: 16 }]}>
-                <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>
-                    Dosage Amount <Text style={{ color: theme.colors.error }}>*</Text>
-                </Text>
-                <TextInput
-                    style={[styles.input, {
-                        backgroundColor: theme.colors.surface,
-                        borderColor: error ? theme.colors.error : theme.colors.outline,
-                        borderWidth: error ? 2 : 1,
-                        color: theme.colors.onSurface
-                    }]}
+            <View style={[styles.inputGroup, { flex: 1.2, marginRight: 12 }]}>
+                <PaperText variant="labelLarge" style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>
+                    Amount <PaperText style={{ color: theme.colors.error }}>*</PaperText>
+                </PaperText>
+                <PaperTextInput
+                    mode="flat"
                     placeholder="10"
-                    placeholderTextColor={theme.colors.onSurfaceVariant}
                     value={dosage}
                     onChangeText={setDosage}
                     keyboardType="numeric"
                     maxLength={10}
+                    error={error}
+                    style={[styles.input, { backgroundColor: theme.colors.surfaceVariant }]}
+                    underlineColor="transparent"
+                    activeUnderlineColor={theme.colors.primary}
+                    dense
                 />
-                {error && (
-                    <Text style={[styles.errorText, { color: theme.colors.error }]}>
-                        Required
-                    </Text>
-                )}
             </View>
             <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Dosage Unit</Text>
+                <PaperText variant="labelLarge" style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Unit</PaperText>
                 <Menu
                     visible={showUnitMenu}
                     onDismiss={() => setShowUnitMenu(false)}
                     anchor={
-                        <TouchableOpacity
-                            style={[styles.dropdownInput, {
-                                backgroundColor: theme.colors.surface,
-                                borderColor: theme.colors.outline
-                            }]}
+                        <Button
+                            mode="contained-tonal"
                             onPress={() => setShowUnitMenu(true)}
+                            style={styles.dropdownButton}
+                            labelStyle={{ color: theme.colors.onSurface, fontSize: 14 }}
+                            contentStyle={{ height: 48, flexDirection: 'row-reverse', justifyContent: 'space-between' }}
+                            icon={({ size, color }) => (
+                                <MaterialCommunityIcons name="chevron-down" size={size} color={theme.colors.primary} />
+                            )}
                         >
-                            <Text style={[styles.inputText, { color: theme.colors.onSurface }]}>{dosageUnit}</Text>
-                            <Ionicons name="chevron-down" size={20} color={theme.colors.onSurfaceVariant} />
-                        </TouchableOpacity>
+                            {dosageUnit}
+                        </Button>
                     }
-                    contentStyle={{ backgroundColor: theme.colors.surface }}
+                    contentStyle={{ backgroundColor: theme.colors.surface, borderRadius: 12 }}
                 >
                     {unitOptions.map((option) => (
                         <Menu.Item
@@ -79,7 +75,6 @@ export const DosageInput: React.FC<DosageInputProps> = ({
                                 setShowUnitMenu(false);
                             }}
                             title={option}
-                            titleStyle={{ color: theme.colors.onSurface }}
                         />
                     ))}
                 </Menu>
@@ -91,39 +86,25 @@ export const DosageInput: React.FC<DosageInputProps> = ({
 const styles = StyleSheet.create({
     row: {
         flexDirection: 'row',
+        alignItems: 'flex-end',
         marginBottom: 24,
     },
     inputGroup: {
         marginBottom: 0,
     },
     label: {
-        fontSize: 14,
-        fontWeight: 'bold',
         marginBottom: 8,
-        textTransform: 'uppercase',
+        fontWeight: '600',
     },
     input: {
-        borderWidth: 1,
+        height: 48,
+        borderTopLeftRadius: 12,
+        borderTopRightRadius: 12,
+        borderRadius: 12, // Rounding for Apothecary look
+    },
+    dropdownButton: {
         borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        fontSize: 16,
-    },
-    dropdownInput: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-    },
-    inputText: {
-        fontSize: 16,
-    },
-    errorText: {
-        fontSize: 12,
-        marginTop: 4,
-        marginLeft: 4,
+        height: 48,
+        justifyContent: 'center',
     },
 });

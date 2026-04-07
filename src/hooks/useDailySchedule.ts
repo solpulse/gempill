@@ -1,27 +1,56 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 import { useSharedValue, useAnimatedStyle, withSpring, runOnJS, useAnimatedReaction, withTiming, Easing } from 'react-native-reanimated';
 import { useMedication } from '../context/MedicationContext';
 import { Dose } from '../types/GempillTypes';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 // import { colors } from '../theme/colors';
 
-export const useDailySchedule = () => {
+export const useDailySchedule = (selectedDate: Date = new Date()) => {
     const { doses, updateDoseStatus } = useMedication();
     const [adherence, setAdherence] = useState(0);
     const [showConfetti, setShowConfetti] = useState(false);
+    const [historyDoses, setHistoryDoses] = useState<Dose[]>([]);
+
+    const isToday = useMemo(() => {
+        return selectedDate.toDateString() === new Date().toDateString();
+    }, [selectedDate]);
+
+    const displayDoses = isToday ? doses : historyDoses;
+
+    useEffect(() => {
+        if (!isToday) {
+            const fetchHistory = async () => {
+                const historyJson = await AsyncStorage.getItem('@dose_history');
+                if (historyJson) {
+                    const history = JSON.parse(historyJson);
+                    const entry = history.find((e: any) => e.date === selectedDate.toDateString());
+                    setHistoryDoses(entry ? entry.doses : []);
+                } else {
+                    setHistoryDoses([]);
+                }
+            };
+            fetchHistory();
+            
+            const subscription = DeviceEventEmitter.addListener('historyUpdated', fetchHistory);
+            return () => subscription.remove();
+        }
+    }, [isToday, selectedDate]);
 
     // Calculate Adherence
     useEffect(() => {
         calculateAdherence();
-    }, [doses]);
+    }, [displayDoses]);
 
     const calculateAdherence = () => {
-        const totalDoses = doses.length;
-        const takenDoses = doses.filter((d) => d.status === 'Taken').length;
+        const totalDoses = displayDoses.length;
+        const takenDoses = displayDoses.filter((d) => d.status === 'Taken').length;
         const percentage = totalDoses > 0 ? Math.round((takenDoses / totalDoses) * 100) : 0;
         setAdherence(percentage);
 
         // Reset confetti if dropped below 100 (immediate reset for UI logic)
-        if (percentage < 100) {
+        // Also don't show confetti for historical dates by default just from loading
+        if (percentage < 100 || !isToday) {
             setShowConfetti(false);
         }
     };
@@ -45,14 +74,14 @@ export const useDailySchedule = () => {
     // Grouping & Sorting
     // ⚡ Bolt: Memoize derived state to prevent FlashList from re-rendering all items on every state change (e.g. confetti animation)
     const dosesByTime = useMemo(() => {
-        return doses.reduce((acc, dose) => {
+        return displayDoses.reduce((acc, dose) => {
             if (!acc[dose.scheduledTime]) {
                 acc[dose.scheduledTime] = [];
             }
             acc[dose.scheduledTime].push(dose);
             return acc;
         }, {} as Record<string, Dose[]>);
-    }, [doses]);
+    }, [displayDoses]);
 
     const sortedTimes = useMemo(() => {
         return Object.keys(dosesByTime).sort((a, b) => {
@@ -98,6 +127,8 @@ export const useDailySchedule = () => {
         handleTake,
         handleSkip,
         handlePending,
-        showConfetti
+        showConfetti,
+        isToday,
+        updateDoseStatus // Expose for HomeScreen to use after confirmation
     };
 };

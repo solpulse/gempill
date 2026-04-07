@@ -1,12 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/GempillTypes';
 import { TimePickerModal } from 'react-native-paper-dates';
 import { useUser } from '../context/UserContext';
-import { useTheme } from 'react-native-paper';
+import { useTheme, Text as PaperText, TextInput as PaperTextInput, Button } from 'react-native-paper';
 import { useMedicationForm } from '../hooks/useMedicationForm';
 
 // Decomposed Components
@@ -39,26 +39,14 @@ export const AddMedicationScreen: React.FC<Props> = ({ navigation, route }) => {
     } = useMedicationForm(navigation, route);
 
     const handleSave = async () => {
-        // Call the original save logic from the hook
         const success = await originalHandleSave();
-
         if (success && isOnboarding) {
             await completeOnboarding();
-            // AppNavigator will see the state change and switch stacks automatically?
-            // Usually yes, if we are using conditional rendering. 
-            // If not, we might need manual navigation. 
-            // But 'completeOnboarding' changes 'hasCompletedOnboarding' which AppNavigator should listen to.
         }
     };
 
     const colorOptions = [
-        '#A5D6A7', // labelGreen
-        '#F48FB1', // labelPink
-        '#FFF59D', // labelYellow
-        '#90CAF9', // labelBlue
-        '#CE93D8', // labelPurple
-        '#FFCC80', // labelOrange
-        '#B0BEC5', // labelGrey
+        '#A5D6A7', '#F48FB1', '#FFF59D', '#90CAF9', '#CE93D8', '#FFCC80', '#B0BEC5',
     ];
 
     const iconOptions = ['medical-bag', 'pill', 'custom-tablet', 'bottle-tonic-plus', 'bandage', 'nutrition'];
@@ -67,43 +55,46 @@ export const AddMedicationScreen: React.FC<Props> = ({ navigation, route }) => {
     return (
         <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
             <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-                <View style={[styles.header, { borderBottomColor: theme.colors.outlineVariant, backgroundColor: theme.colors.background }]}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Close">
-                        <Ionicons name="close" size={24} color={theme.colors.onSurface} />
+                {/* Apothecary Header - Clean & Minimalist */}
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
+                        <Ionicons name="chevron-back" size={24} color={theme.colors.primary} />
                     </TouchableOpacity>
-                    <Text style={[styles.headerTitle, { color: theme.colors.onSurface }]}>{isEditing ? 'Edit Medication' : 'Add Medication'}</Text>
-                    <TouchableOpacity onPress={handleSave} accessibilityRole="button" accessibilityLabel={isEditing ? 'Save' : 'Add'}>
-                        <Text style={[styles.saveButtonText, { color: theme.colors.primary }]}>{isEditing ? 'Save' : 'Add'}</Text>
+                    <PaperText variant="headlineSmall" style={[styles.headerTitle, { color: theme.colors.primary, fontFamily: Platform.OS === 'ios' ? 'System' : 'serif' }]}>
+                        {isEditing ? 'Edit Entry' : 'Personal Prescription'}
+                    </PaperText>
+                    <TouchableOpacity onPress={handleSave} style={styles.saveHeaderButton}>
+                        <PaperText variant="labelLarge" style={{ color: theme.colors.primary, fontWeight: '700' }}>DONE</PaperText>
                     </TouchableOpacity>
                 </View>
-                <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
 
-                    {/* Medication Name */}
+                <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+                    
+                    {/* Identification Section */}
                     <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>
-                            Medication Name/Supplement <Text style={{ color: theme.colors.error }}>*</Text>
-                        </Text>
-                        <TextInput
-                            style={[styles.input, {
-                                backgroundColor: theme.colors.surface,
-                                borderColor: errors.name ? theme.colors.error : theme.colors.outline,
-                                borderWidth: errors.name ? 2 : 1,
-                                color: theme.colors.onSurface
-                            }]}
+                        <PaperText variant="labelLarge" style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>
+                            Medication or Supplement <PaperText style={{ color: theme.colors.error }}>*</PaperText>
+                        </PaperText>
+                        <PaperTextInput
+                            mode="flat"
                             placeholder="e.g., Lisinopril"
                             placeholderTextColor={theme.colors.onSurfaceVariant}
                             value={name}
                             onChangeText={setName}
                             maxLength={100}
+                            style={[styles.input, { backgroundColor: theme.colors.surfaceVariant }]}
+                            error={!!errors.name}
+                            underlineColor="transparent"
+                            activeUnderlineColor={theme.colors.primary}
                         />
                         {errors.name && (
-                            <Text style={[styles.errorText, { color: theme.colors.error }]}>
-                                Medication name is required
-                            </Text>
+                            <PaperText variant="labelSmall" style={{ color: theme.colors.error, marginTop: 4, marginLeft: 4 }}>
+                                Identification is required
+                            </PaperText>
                         )}
                     </View>
 
-                    {/* Dosage Component */}
+                    {/* Dosage Component - Handled In-Screen for better control */}
                     <DosageInput
                         dosage={dosage}
                         setDosage={setDosage}
@@ -117,7 +108,7 @@ export const AddMedicationScreen: React.FC<Props> = ({ navigation, route }) => {
 
                     {/* Intake Time Component */}
                     <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Intake Time</Text>
+                        <PaperText variant="labelLarge" style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Schedule</PaperText>
                         <TimeScheduleInput
                             times={times}
                             onOpenPicker={openTimePicker}
@@ -128,19 +119,16 @@ export const AddMedicationScreen: React.FC<Props> = ({ navigation, route }) => {
                         />
                     </View>
 
-                    {/* Color Label Component */}
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Color Label</Text>
+                    {/* Aesthetics - Grouped Selection */}
+                    <View style={[styles.inputGroup, { marginTop: 8 }]}>
+                        <PaperText variant="labelLarge" style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Identity Label</PaperText>
                         <ColorSelector
                             selectedColor={color}
                             onSelectColor={setColor}
                             options={colorOptions}
                         />
-                    </View>
-
-                    {/* Medication Icon Component */}
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Medication Icon</Text>
+                        <View style={{ height: 24 }} />
+                        <PaperText variant="labelLarge" style={[styles.label, { color: theme.colors.onSurfaceVariant }]}>Iconography</PaperText>
                         <IconSelector
                             selectedIcon={icon}
                             onSelectIcon={setIcon}
@@ -151,28 +139,26 @@ export const AddMedicationScreen: React.FC<Props> = ({ navigation, route }) => {
                 </ScrollView>
             </SafeAreaView>
 
-            {/* Footer Actions */}
-            <View style={[styles.footer, {
-                backgroundColor: theme.colors.surface,
-                borderTopColor: theme.colors.outlineVariant,
-                paddingBottom: Math.max(insets.bottom, 20)
-            }]}>
-                <TouchableOpacity style={[styles.cancelButton, { backgroundColor: theme.colors.surfaceVariant }]} onPress={() => navigation.goBack()}>
-                    <Text style={[styles.cancelButtonText, { color: theme.colors.onSurfaceVariant }]}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.saveButton, { backgroundColor: theme.colors.primary }]} onPress={handleSave}>
-                    <Text style={[styles.footerSaveButtonText, { color: theme.colors.onPrimary }]}>Save</Text>
-                </TouchableOpacity>
+            {/* Floating Action Container - Replaces rigid footer */}
+            <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+                <Button 
+                    mode="contained" 
+                    onPress={handleSave} 
+                    style={styles.saveButton} 
+                    contentStyle={{ height: 56 }}
+                    labelStyle={{ fontSize: 16, fontWeight: '700' }}
+                >
+                    {isEditing ? 'Update Prescription' : 'Archive Entry'}
+                </Button>
             </View>
 
-            {/* Material Design 3 Time Picker Modal */}
             <TimePickerModal
                 visible={showTimePicker}
                 onDismiss={onDismissTimePicker}
                 onConfirm={onConfirmTimePicker}
                 hours={activeTimeIndex !== null && times[activeTimeIndex] ? times[activeTimeIndex].time.getHours() : 12}
                 minutes={activeTimeIndex !== null && times[activeTimeIndex] ? times[activeTimeIndex].time.getMinutes() : 0}
-                use24HourClock={is24Hour === true} // strictly boolean
+                use24HourClock={is24Hour === true}
             />
         </View>
     );
@@ -186,77 +172,52 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        borderBottomWidth: 1,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
+    headerIcon: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     headerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        flex: 1,
+        textAlign: 'center',
+        fontWeight: 'normal',
     },
-    saveButtonText: {
-        fontSize: 16,
-        fontWeight: 'bold',
+    saveHeaderButton: {
+        paddingHorizontal: 8,
     },
     container: {
         flex: 1,
     },
     contentContainer: {
-        padding: 20,
-        paddingBottom: 100,
+        paddingHorizontal: 24,
+        paddingTop: 16,
+        paddingBottom: 120,
     },
     inputGroup: {
-        marginBottom: 24,
+        marginBottom: 32,
     },
     label: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        marginBottom: 8,
-        textTransform: 'uppercase',
+        marginBottom: 10,
+        fontWeight: '600',
     },
     input: {
-        borderWidth: 1,
         borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        fontSize: 16,
+        height: 56,
+        borderTopLeftRadius: 12,
+        borderTopRightRadius: 12,
     },
     footer: {
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
-        flexDirection: 'row',
-        padding: 20,
-        borderTopWidth: 1,
-    },
-    cancelButton: {
-        flex: 1,
-        paddingVertical: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 10,
-        borderRadius: 30, // Pill shape
-    },
-    cancelButtonText: {
-        fontSize: 16,
-        fontWeight: 'bold',
+        padding: 24,
     },
     saveButton: {
-        flex: 1,
-        paddingVertical: 16, // Taller button
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginLeft: 10,
-        borderRadius: 30, // Pill shape
-    },
-    footerSaveButtonText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    errorText: {
-        fontSize: 12,
-        marginTop: 4,
-        marginLeft: 4,
+        borderRadius: 16,
     },
 });

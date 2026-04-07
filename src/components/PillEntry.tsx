@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, memo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -8,9 +8,9 @@ import Animated, {
     Extrapolation,
     Easing
 } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Dose } from '../types/GempillTypes';
-import { useTheme } from 'react-native-paper';
+import { useTheme, Text as PaperText } from 'react-native-paper';
 import { MedicationIcon } from './MedicationIcon';
 
 interface PillEntryProps {
@@ -22,12 +22,8 @@ interface PillEntryProps {
 
 const PillEntryComponent: React.FC<PillEntryProps> = ({ dose, onTake, onSkip, onPending }) => {
     const theme = useTheme();
-    const colors = theme.colors; // ease of migration
 
     // Animation Values
-    // 0: Pending (Both visible)
-    // 1: Taken (Check expanded, Cross hidden)
-    // -1: Skipped (Cross expanded, Check hidden)
     const animValue = useSharedValue(0);
 
     useEffect(() => {
@@ -37,230 +33,124 @@ const PillEntryComponent: React.FC<PillEntryProps> = ({ dose, onTake, onSkip, on
         else targetValue = 0;
 
         animValue.value = withTiming(targetValue, {
-            duration: 250,
+            duration: 300,
             easing: Easing.out(Easing.cubic),
         });
     }, [dose.status]);
 
     const handleTake = useCallback(() => {
-        if (dose.status === 'Taken') {
-            onPending(dose.id);
-        } else {
-            onTake(dose.id);
-        }
+        if (dose.status === 'Taken') onPending(dose.id);
+        else onTake(dose.id);
     }, [dose.id, dose.status, onTake, onPending]);
 
     const handleSkip = useCallback(() => {
-        if (dose.status === 'Skipped') {
-            onPending(dose.id);
-        } else {
-            onSkip(dose.id);
-        }
+        if (dose.status === 'Skipped') onPending(dose.id);
+        else onSkip(dose.id);
     }, [dose.id, dose.status, onSkip, onPending]);
 
     // Constants
-    const BUTTON_SIZE = 44;
-    const EXPANDED_WIDTH = 110;
+    const BUTTON_SIZE = 48;
+    const EXPANDED_WIDTH = 120;
 
     // Animated Styles
     const takeButtonStyle = useAnimatedStyle(() => {
-        const width = interpolate(
-            animValue.value,
-            [-1, 0, 1],
-            [0, BUTTON_SIZE, EXPANDED_WIDTH],
-            Extrapolation.CLAMP
-        );
-        const opacity = interpolate(
-            animValue.value,
-            [-1, 0, 1],
-            [0, 1, 1],
-            Extrapolation.CLAMP
-        );
-        const marginRight = interpolate(
-            animValue.value,
-            [-1, 0, 1],
-            [0, 12, 0],
-            Extrapolation.CLAMP
-        );
-        return {
-            width,
-            opacity,
-            marginRight,
-        };
+        const width = interpolate(animValue.value, [-1, 0, 1], [0, BUTTON_SIZE, EXPANDED_WIDTH], Extrapolation.CLAMP);
+        const opacity = interpolate(animValue.value, [-1, 0, 1], [0, 1, 1], Extrapolation.CLAMP);
+        const marginRight = interpolate(animValue.value, [-1, 0, 1], [0, 12, 0], Extrapolation.CLAMP);
+        return { width, opacity, marginRight };
     });
 
     const skipButtonStyle = useAnimatedStyle(() => {
-        const width = interpolate(
-            animValue.value,
-            [-1, 0, 1],
-            [EXPANDED_WIDTH, BUTTON_SIZE, 0],
-            Extrapolation.CLAMP
-        );
-        const opacity = interpolate(
-            animValue.value,
-            [-1, 0, 1],
-            [1, 1, 0],
-            Extrapolation.CLAMP
-        );
-        return {
-            width,
-            opacity,
-        };
+        const width = interpolate(animValue.value, [-1, 0, 1], [EXPANDED_WIDTH, BUTTON_SIZE, 0], Extrapolation.CLAMP);
+        const opacity = interpolate(animValue.value, [-1, 0, 1], [1, 1, 0], Extrapolation.CLAMP);
+        return { width, opacity };
     });
 
     const takeIconStyle = useAnimatedStyle(() => {
-        const translateX = interpolate(
-            animValue.value,
-            [0, 1],
-            [0, -28],
-            Extrapolation.CLAMP
-        );
-        return {
-            transform: [{ translateX }],
-        };
+        const translateX = interpolate(animValue.value, [0, 1], [0, -32], Extrapolation.CLAMP);
+        return { transform: [{ translateX }] };
     });
 
     const skipIconStyle = useAnimatedStyle(() => {
-        const translateX = interpolate(
-            animValue.value,
-            [-1, 0],
-            [-28, 0],
-            Extrapolation.CLAMP
-        );
-        return {
-            transform: [{ translateX }],
-        };
+        const translateX = interpolate(animValue.value, [-1, 0], [-32, 0], Extrapolation.CLAMP);
+        return { transform: [{ translateX }] };
     });
 
     const takeTextStyle = useAnimatedStyle(() => {
-        const opacity = interpolate(
-            animValue.value,
-            [0, 0.7, 1],
-            [0, 0, 1],
-            Extrapolation.CLAMP
-        );
-        const translateX = interpolate(
-            animValue.value,
-            [0, 1],
-            [10, 0],
-            Extrapolation.CLAMP
-        );
-        return {
-            opacity,
-            transform: [{ translateX }],
-        };
+        const opacity = interpolate(animValue.value, [0, 0.7, 1], [0, 0, 1], Extrapolation.CLAMP);
+        const translateX = interpolate(animValue.value, [0, 1], [10, 0], Extrapolation.CLAMP);
+        return { opacity, transform: [{ translateX }] };
     });
 
     const skipTextStyle = useAnimatedStyle(() => {
-        const opacity = interpolate(
-            animValue.value,
-            [-1, -0.7, 0],
-            [1, 0, 0],
-            Extrapolation.CLAMP
-        );
-        const translateX = interpolate(
-            animValue.value,
-            [-1, 0],
-            [0, 10],
-            Extrapolation.CLAMP
-        );
-        return {
-            opacity,
-            transform: [{ translateX }],
-        };
+        const opacity = interpolate(animValue.value, [-1, -0.7, 0], [1, 0, 0], Extrapolation.CLAMP);
+        const translateX = interpolate(animValue.value, [-1, 0], [0, 10], Extrapolation.CLAMP);
+        return { opacity, transform: [{ translateX }] };
     });
 
-
-    // Missed status is static and distinct
     if ((dose.status as string) === 'Missed') {
         return (
-            <View style={styles.container}>
-                <View style={[styles.iconContainer, { backgroundColor: dose.color || theme.colors.primaryContainer }]}>
-                    <MedicationIcon name={dose.icon || "pill"} size={24} color={theme.colors.onSurface} />
+            <View style={[styles.container, { backgroundColor: theme.colors.surface, borderRadius: 20 }]}>
+                <View style={[styles.iconContainer, { backgroundColor: theme.colors.errorContainer }]}>
+                    <MedicationIcon name={dose.icon || "pill"} size={22} color={theme.colors.error} />
                 </View>
                 <View style={styles.detailsContainer}>
-                    <Text style={[styles.medName, { color: theme.colors.onSurface }]}>{dose.name}</Text>
-                    <Text style={[styles.dosageText, { color: theme.colors.onSurfaceVariant }]}>{dose.dosage} {dose.dosageUnit}, {dose.frequency}</Text>
+                    <PaperText variant="titleMedium" style={styles.nameText}>{dose.name}</PaperText>
+                    <PaperText variant="bodySmall" style={{ color: theme.colors.error, fontFamily: Platform.OS === 'ios' ? 'System' : 'serif' }}>
+                        Missed Intake Archive
+                    </PaperText>
                 </View>
                 <View style={styles.actionContainer}>
-                    <View style={[styles.missedBadge, { backgroundColor: theme.colors.errorContainer }]}>
-                        <Ionicons name="alert-circle" size={20} color={theme.colors.error} />
-                        <Text style={[styles.missedBadgeText, { color: theme.colors.error }]}>Missed</Text>
-                    </View>
+                    <MaterialCommunityIcons name="alert-circle-outline" size={24} color={theme.colors.error} />
                 </View>
             </View>
         );
     }
 
     return (
-        <View style={styles.container}>
-            {/* Pill Icon Container */}
-            <View style={[styles.iconContainer, { backgroundColor: dose.color || theme.colors.primaryContainer }]}>
-                <MedicationIcon name={dose.icon || "pill"} size={24} color={theme.colors.onSurface} />
+        <View style={[styles.container, { backgroundColor: theme.colors.surface, borderRadius: 20, marginBottom: 12 }]}>
+            <View style={[styles.iconContainer, { backgroundColor: theme.colors.surfaceVariant }]}>
+                <MedicationIcon name={dose.icon || "pill"} size={22} color={theme.colors.primary} />
             </View>
 
-            {/* Details Container */}
             <View style={styles.detailsContainer}>
-                <Text style={[styles.medName, { color: theme.colors.onSurface }]}>{dose.name}</Text>
-                <Text style={[styles.dosageText, { color: theme.colors.onSurfaceVariant }]}>
-                    {dose.dosage} {dose.dosageUnit}, {dose.frequency}
-                </Text>
+                <PaperText variant="titleMedium" style={styles.nameText}>{dose.name}</PaperText>
+                <PaperText variant="bodySmall" style={styles.subtext}>
+                    {dose.dosage} {dose.dosageUnit} • {dose.frequency}
+                </PaperText>
             </View>
 
-            {/* Action Container - Fixed Width for centering */}
             <View style={styles.actionContainer}>
                 <View style={styles.buttonsWrapper}>
-                    {/* Take Button */}
-                    <Animated.View style={[
-                        { overflow: 'hidden' },
-                        takeButtonStyle
-                    ]}>
+                    <Animated.View style={[{ overflow: 'hidden' }, takeButtonStyle]}>
                         <TouchableOpacity
-                            style={[styles.actionButton, { backgroundColor: theme.colors.tertiaryContainer || '#B9F6CA' }]}
+                            style={[styles.actionButton, { backgroundColor: theme.colors.primary }]}
                             onPress={handleTake}
                             activeOpacity={0.8}
                         >
                             <View style={styles.buttonContent}>
                                 <Animated.View style={takeIconStyle}>
-                                    <Ionicons name="checkmark" size={28} color={theme.colors.tertiary || '#00C853'} style={{ fontWeight: '900' }} />
+                                    <MaterialCommunityIcons name="check" size={22} color="white" />
                                 </Animated.View>
-                                <Animated.Text
-                                    style={[
-                                        styles.buttonText,
-                                        { color: theme.colors.tertiary || '#00C853' },
-                                        takeTextStyle
-                                    ]}
-                                    numberOfLines={1}
-                                >
+                                <Animated.Text style={[styles.buttonText, { color: "white" }, takeTextStyle]}>
                                     Taken
                                 </Animated.Text>
                             </View>
                         </TouchableOpacity>
                     </Animated.View>
 
-                    {/* Skip Button */}
-                    <Animated.View style={[
-                        { overflow: 'hidden' },
-                        skipButtonStyle
-                    ]}>
+                    <Animated.View style={[{ overflow: 'hidden' }, skipButtonStyle]}>
                         <TouchableOpacity
-                            style={[styles.actionButton, { backgroundColor: theme.colors.errorContainer }]}
+                            style={[styles.actionButton, { backgroundColor: theme.colors.secondaryContainer }]}
                             onPress={handleSkip}
                             activeOpacity={0.8}
                         >
                             <View style={styles.buttonContent}>
                                 <Animated.View style={skipIconStyle}>
-                                    <Ionicons name="close" size={28} color={theme.colors.error} style={{ fontWeight: '900' }} />
+                                    <MaterialCommunityIcons name="close" size={22} color={theme.colors.onSecondaryContainer} />
                                 </Animated.View>
-                                <Animated.Text
-                                    style={[
-                                        styles.buttonText,
-                                        { color: theme.colors.error },
-                                        skipTextStyle
-                                    ]}
-                                    numberOfLines={1}
-                                >
-                                    Skipped
+                                <Animated.Text style={[styles.buttonText, { color: theme.colors.onSecondaryContainer }, skipTextStyle]}>
+                                    Skip
                                 </Animated.Text>
                             </View>
                         </TouchableOpacity>
@@ -271,20 +161,19 @@ const PillEntryComponent: React.FC<PillEntryProps> = ({ dose, onTake, onSkip, on
     );
 };
 
-// Memoize to prevent unnecessary re-renders when parent updates other doses
 export const PillEntry = memo(PillEntryComponent);
 
 const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12,
+        paddingVertical: 14,
         paddingHorizontal: 16,
     },
     iconContainer: {
         width: 48,
         height: 48,
-        borderRadius: 24,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
@@ -293,32 +182,33 @@ const styles = StyleSheet.create({
         flex: 1,
         marginRight: 8,
     },
-    medName: {
+    nameText: {
+        fontWeight: '700',
         fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 4,
     },
-    dosageText: {
-        fontSize: 14,
+    subtext: {
+        fontSize: 12,
+        opacity: 0.7,
     },
     actionContainer: {
-        width: 110, // Fixed width to contain the buttons/expanded button
-        height: 44,
+        width: 120,
+        height: 48,
         justifyContent: 'center',
         alignItems: 'center',
     },
     buttonsWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-end',
+        width: '100%',
     },
     actionButton: {
-        height: 44,
-        borderRadius: 22,
+        height: 48,
+        borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
         flexDirection: 'row',
-        width: '100%', // Take full width of animated container
+        width: '100%',
     },
     buttonContent: {
         flexDirection: 'row',
@@ -328,24 +218,10 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     buttonText: {
-        fontWeight: 'bold',
-        fontSize: 15,
-        position: 'absolute',
-        left: 40, // Offset from icon (icon size + spacing)
-        right: 0,
-    },
-    missedBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        width: '100%', // Fill container
-        justifyContent: 'center',
-    },
-    missedBadgeText: {
-        fontWeight: 'bold',
+        fontWeight: '700',
         fontSize: 14,
-        marginLeft: 4,
+        position: 'absolute',
+        left: 44,
+        right: 0,
     },
 });

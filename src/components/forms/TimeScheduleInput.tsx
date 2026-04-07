@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from 'react-native-paper';
+import { View, StyleSheet, Platform } from 'react-native';
+import { useTheme, Button, Text as PaperText } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ScheduledTime } from '../../types/GempillTypes';
 
 interface TimeScheduleInputProps {
@@ -27,34 +27,45 @@ export const TimeScheduleInput: React.FC<TimeScheduleInputProps> = ({
         <View>
             {times.map((item, index) => (
                 <View key={index} style={styles.timeRow}>
-                    <TouchableOpacity
-                        style={[styles.timeInput, {
-                            backgroundColor: theme.colors.surface,
-                            borderColor: error ? theme.colors.error : theme.colors.outline,
-                            borderWidth: error ? 2 : 1
-                        }]}
+                    <Button
+                        mode="contained-tonal"
                         onPress={() => onOpenPicker(index)}
+                        style={[styles.timeButton, { 
+                            backgroundColor: theme.colors.surfaceVariant,
+                            borderColor: error ? theme.colors.error : 'transparent',
+                            borderWidth: error ? 1 : 0
+                        }]}
+                        contentStyle={styles.timeButtonContent}
+                        labelStyle={{ color: theme.colors.onSurface, fontSize: 16 }}
+                        icon={() => <MaterialCommunityIcons name="clock-outline" size={20} color={theme.colors.primary} />}
                     >
-                        <Text style={[styles.inputText, { color: theme.colors.onSurface }]}>{formatTime(item.time)}</Text>
-                        <Ionicons name="time-outline" size={20} color={theme.colors.onSurface} />
-                    </TouchableOpacity>
+                        {formatTime(item.time)}
+                    </Button>
+                    
                     {times.length > 1 && (
-                        <TouchableOpacity
-                            style={[styles.deleteButton, { backgroundColor: theme.colors.errorContainer }]}
+                        <Button
+                            mode="text"
                             onPress={() => onRemoveSlot(index)}
-                            accessibilityRole="button"
-                            accessibilityLabel="Delete time slot"
+                            style={styles.deleteButton}
+                            textColor={theme.colors.error}
+                            icon={() => <MaterialCommunityIcons name="trash-can-outline" size={22} color={theme.colors.error} />}
                         >
-                            <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
-                        </TouchableOpacity>
+                            {/* Empty label for icon-only feel but functional button */}
+                            {''}
+                        </Button>
                     )}
                 </View>
             ))}
 
-            <TouchableOpacity style={styles.addTimeButton} onPress={onAddSlot}>
-                <Ionicons name="add" size={20} color={theme.colors.tertiary || theme.colors.primary} />
-                <Text style={[styles.addTimeText, { color: theme.colors.tertiary || theme.colors.primary }]}>Add another time</Text>
-            </TouchableOpacity>
+            <Button
+                mode="text"
+                onPress={onAddSlot}
+                style={styles.addTimeButton}
+                icon="plus"
+                labelStyle={[styles.addTimeText, { color: theme.colors.primary, fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif' }]}
+            >
+                Add another time
+            </Button>
         </View>
     );
 };
@@ -65,35 +76,29 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 12,
     },
-    timeInput: {
+    timeButton: {
         flex: 1,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderWidth: 1,
         borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        marginRight: 12,
+        marginRight: 8,
     },
-    inputText: {
-        fontSize: 16,
+    timeButtonContent: {
+        height: 52,
+        flexDirection: 'row-reverse',
+        justifyContent: 'space-between',
+        paddingHorizontal: 8,
     },
     deleteButton: {
-        width: 48,
-        height: 48,
+        minWidth: 48,
         justifyContent: 'center',
         alignItems: 'center',
-        borderRadius: 12,
     },
     addTimeButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 8,
+        alignSelf: 'flex-start',
+        marginTop: 4,
+        marginLeft: -8, // Align label with start of list
     },
     addTimeText: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginLeft: 8,
+        fontSize: 15,
+        fontWeight: '700',
     },
 });

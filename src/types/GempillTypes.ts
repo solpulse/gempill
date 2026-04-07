@@ -1,4 +1,5 @@
 export type MedicationStatus = 'Active' | 'Paused' | 'Finished' | 'Cancelled';
+export type DoseStatus = 'Pending' | 'Taken' | 'Missed' | 'Skipped';
 
 export interface Medication {
     id: string;

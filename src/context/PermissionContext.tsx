@@ -50,6 +50,7 @@ export const PermissionProvider = ({ children }: { children: ReactNode }) => {
     const [permissionType, setPermissionType] = useState<PermissionType>('alarm');
     const [vendorType] = useState<VendorType>(getVendorType);
     const [batteryNagIgnored, setBatteryNagIgnored] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
     const appState = useRef(AppState.currentState);
     const pendingCheck = useRef(false);
 
@@ -58,8 +59,14 @@ export const PermissionProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     const loadNagStatus = async () => {
-        const ignored = await AsyncStorage.getItem(STORAGE_KEY_BATTERY_NAG);
-        if (ignored === 'true') setBatteryNagIgnored(true);
+        try {
+            const ignored = await AsyncStorage.getItem(STORAGE_KEY_BATTERY_NAG);
+            if (ignored === 'true') setBatteryNagIgnored(true);
+        } catch (e) {
+            console.error('[Permission] Failed to load nag status', e);
+        } finally {
+            setIsInitialized(true);
+        }
     };
 
     // AppState listener to re-check permissions when returning from settings
@@ -91,12 +98,21 @@ export const PermissionProvider = ({ children }: { children: ReactNode }) => {
             return;
         }
 
-        console.log(`[Permission] Starting check (First Check: ${!isRecheck})`);
+        // Ensure we have loaded the "ignore" status from storage before checking
+        if (!isInitialized) {
+            console.log('[Permission] Waiting for initialization...');
+            // Simple wait or recursive call
+            await new Promise(resolve => setTimeout(resolve, 100));
+            return checkPermissionsInternal(isRecheck);
+        }
+
+        const androidVersion = typeof Platform.Version === 'string' ? parseInt(Platform.Version, 10) : Platform.Version;
+        console.log(`[Permission] Starting check (First Check: ${!isRecheck}, Ignored: ${batteryNagIgnored}, API: ${androidVersion})`);
 
         // ---------------------------------------------------------
         // Step 1: Handle Notification (POST_NOTIFICATIONS) for Android 13+
         // ---------------------------------------------------------
-        if (Platform.Version >= 33) {
+        if (androidVersion >= 33) {
             let hasNoticePerm = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
             console.log('[Permission] POST_NOTIFICATIONS status:', hasNoticePerm);
             
@@ -125,7 +141,7 @@ export const PermissionProvider = ({ children }: { children: ReactNode }) => {
         // Step 2: Handle Exact Alarms (Android 12+)
         // This is where EXEMPTIONS or the manual toggle apply.
         // ---------------------------------------------------------
-        if (Platform.Version >= 31) {
+        if (androidVersion >= 31) {
             // Sequential Check for Alarms
             let updatedSettings = await notifee.getNotificationSettings();
             let alarmStatus = updatedSettings.android?.alarm;
@@ -210,6 +226,13 @@ export const PermissionProvider = ({ children }: { children: ReactNode }) => {
 
     const checkBatteryOnly = async () => {
         if (Platform.OS === 'android') {
+            // Check ignore flag first
+            const ignored = await AsyncStorage.getItem(STORAGE_KEY_BATTERY_NAG);
+            if (ignored === 'true') {
+                console.log('[Permission] checkBatteryOnly - Skipping (User ignored nag)');
+                return;
+            }
+
             const battery = await notifee.isBatteryOptimizationEnabled();
             if (battery) {
                 setPermissionType('battery');
